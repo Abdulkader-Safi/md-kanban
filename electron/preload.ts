@@ -13,4 +13,9 @@ contextBridge.exposeInMainWorld('mdkanban', {
   writeFile: (id: string, relPath: string, content: string) =>
     ipcRenderer.invoke('mdkanban:write-file', id, relPath, content),
   deleteFile: (id: string, relPath: string) => ipcRenderer.invoke('mdkanban:delete-file', id, relPath),
+  onProjectChanged: (cb: (id: string) => void) => {
+    const listener = (_e: unknown, id: string) => cb(id)
+    ipcRenderer.on('mdkanban:project-changed', listener)
+    return () => ipcRenderer.removeListener('mdkanban:project-changed', listener)
+  },
 })

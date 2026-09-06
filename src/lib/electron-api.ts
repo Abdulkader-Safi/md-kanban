@@ -24,6 +24,7 @@ export interface MdkanbanApi {
   readFile: (id: string, relPath: string) => Promise<string>
   writeFile: (id: string, relPath: string, content: string) => Promise<void>
   deleteFile: (id: string, relPath: string) => Promise<void>
+  onProjectChanged: (cb: (id: string) => void) => () => void
 }
 
 declare global {

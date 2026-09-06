@@ -185,6 +185,7 @@ watch([selectedProjectId, selectedWorkspace, autoRefresh], savePrefs)
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let polling = false
+let watcherUnsub: (() => void) | null = null
 
 /** Background refresh: re-read folders every few seconds so agent edits
  *  appear with no clicks. Never touches the selected project. */
@@ -192,8 +193,9 @@ async function pollOnce() {
   if (polling || document.hidden || !autoRefresh.value) return
   polling = true
   try {
+    const api = getElectronApi()
     for (const p of projects.value.filter((x) => x.kind === 'fs')) {
-      if (!handles[p.id]) continue
+      if (!api && !handles[p.id]) continue
       try {
         await rescanProject(p.id, { quiet: true })
       } catch { /* keep old tasks on failure */ }
@@ -207,6 +209,16 @@ async function pollOnce() {
 function startPoller() {
   if (pollTimer != null) return
   pollTimer = setInterval(() => void pollOnce(), POLL_MS)
+}
+
+function startWatcher() {
+  if (watcherUnsub) return
+  const api = getElectronApi()
+  if (!api) return
+  watcherUnsub = api.onProjectChanged((id) => {
+    if (!autoRefresh.value || document.hidden) return
+    void rescanProject(id, { quiet: true })
+  })
 }
 
 export async function initBoard() {
@@ -251,6 +263,7 @@ export async function initBoard() {
       tasks.value = [...(await loadDemoTasks()), ...(await loadFsSnapshot())]
     }
     await rescanAll({ quiet: true })
+    startWatcher()
     startPoller()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load board'
