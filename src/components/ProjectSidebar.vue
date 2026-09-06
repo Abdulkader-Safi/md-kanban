@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { IconFolderOpen, IconLayoutGrid, IconPlugOff, IconRefresh } from '@tabler/icons-vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import {
@@ -10,7 +11,11 @@ import {
   workspaces,
 } from '@/stores/board'
 
-const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh } = useBoard()
+const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck } = useBoard()
+
+const lastCheckLabel = computed(() =>
+  lastCheck.value ? lastCheck.value.toLocaleTimeString() : 'never',
+)
 
 function selectProject(id: string | 'all') {
   selectedProjectId.value = id
@@ -78,6 +83,7 @@ function selectProject(id: string | 'all') {
         <input type="checkbox" v-model="autoRefresh" class="h-3.5 w-3.5 accent-[rgb(var(--sidebar-accent))]" />
         Auto-refresh folders
       </label>
+      <p class="font-mono text-[10px] text-muted-foreground/70">checked {{ lastCheckLabel }}</p>
       <p class="text-[11px] leading-4 text-muted-foreground">
         Each folder is a project. Subfolders group work. Every card is a markdown file with YAML frontmatter.
       </p>

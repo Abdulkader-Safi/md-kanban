@@ -62,6 +62,8 @@ function loadPrefs(): Prefs {
 
 const autoRefresh = ref(true)
 export { autoRefresh }
+const lastCheck = ref<Date | null>(null)
+export { lastCheck }
 
 const handles: Record<string, any> = {}
 
@@ -76,6 +78,7 @@ export function useBoard() {
     selectedProjectId,
     selectedWorkspace,
     autoRefresh,
+    lastCheck,
     columns: DEFAULT_COLUMNS,
   }
 }
@@ -190,6 +193,7 @@ async function pollOnce() {
     }
   } finally {
     polling = false
+    lastCheck.value = new Date()
   }
 }
 
@@ -346,6 +350,7 @@ export async function rescanProject(projectId: string, opts: RescanOptions = {})
     )
     tasks.value = [...tasks.value.filter((t) => t.project !== proj.name), ...parsed]
     await persistFsSnapshot()
+    lastCheck.value = new Date()
   } finally {
     if (!quiet) loading.value = false
   }
@@ -389,6 +394,7 @@ export async function rescanAll(opts: RescanOptions = {}) {
     } else if (!quiet) {
       error.value = `Showing saved tasks for ${failed.join(', ')}. Click rescan to reconnect the folders.`
     }
+    lastCheck.value = new Date()
   } finally {
     if (!quiet) loading.value = false
   }
