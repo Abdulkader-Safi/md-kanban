@@ -2,6 +2,8 @@
 
 A project kanban that lets you track what your AI agents are doing. Each project is a folder, each task is a markdown file, and your agents read and write those files directly. You watch the board and always know what is done and what is not. Built as a Vue 3 + Vite + shadcn-vue web app that runs fully local after `npm run build`.
 
+![MD Kanban board](Screenshot.png)
+
 ## How it works
 
 - **Each folder you connect is a project.** Use "Connect folder" in the sidebar (Chrome or Edge, via the File System Access API). You can connect multiple folders.
