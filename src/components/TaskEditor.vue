@@ -52,6 +52,21 @@ function onBackdropUp(e: MouseEvent) {
 
 const previewHtml = computed(() => marked.parse(form.body || '') as string)
 
+type EditorTab = 'edit' | 'preview'
+const activeTab = ref<EditorTab>(
+  typeof localStorage !== 'undefined' && localStorage.getItem('mdkanban-editor-tab') === 'preview'
+    ? 'preview'
+    : 'edit',
+)
+function setTab(t: EditorTab) {
+  activeTab.value = t
+  try {
+    localStorage.setItem('mdkanban-editor-tab', t)
+  } catch {
+    /* private mode: keep in-memory only */
+  }
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 function autosave() {
   if (!task.value) return
@@ -125,9 +140,24 @@ function rawPreview(): string {
         </label>
       </div>
 
-      <div class="grid flex-1 grid-cols-1 gap-0 overflow-hidden sm:grid-cols-2">
-        <textarea v-model="form.body" @input="autosave" spellcheck="false" class="board-scroll min-h-[240px] flex-1 resize-none border-r bg-background p-3 font-mono text-[13px] leading-6 outline-none" />
-        <div class="board-scroll prose-md hidden overflow-y-auto p-4 sm:block" v-html="previewHtml" />
+      <div class="flex items-center gap-1 border-b px-3 pt-2 text-xs">
+        <button
+          type="button"
+          class="rounded-t-md px-3 py-1.5 font-medium"
+          :class="activeTab === 'edit' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+          @click="setTab('edit')"
+        >Markdown</button>
+        <button
+          type="button"
+          class="rounded-t-md px-3 py-1.5 font-medium"
+          :class="activeTab === 'preview' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
+          @click="setTab('preview')"
+        >Preview</button>
+      </div>
+
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <textarea v-if="activeTab === 'edit'" v-model="form.body" @input="autosave" spellcheck="false" class="board-scroll min-h-[240px] flex-1 resize-none bg-background p-3 font-mono text-[13px] leading-6 outline-none" />
+        <div v-else class="board-scroll prose-md min-h-[240px] flex-1 overflow-y-auto p-4" v-html="previewHtml" />
       </div>
 
       <footer class="flex items-center gap-2 border-t p-3">
