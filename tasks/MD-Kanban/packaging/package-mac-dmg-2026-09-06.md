@@ -14,4 +14,4 @@ order: 4
 
 Set up `electron-builder` for a macOS `.dmg`. No code signing at first. Install it on this machine and confirm folders, watching, dark mode, and the agent skill workflow end to end.
 
-Progress: `npm run dist` builds `release/MD Kanban-0.0.0-arm64.dmg` unsigned. Fixed the white screen by switching Vite to relative asset paths (`base: './'`). Still open: custom app icon, install and open the dmg on this machine, full check once the file API lands.
+Progress: `npm run dist` builds `release/MD Kanban-0.0.0-arm64.dmg` unsigned. Fixed the white screen by switching Vite to relative asset paths (`base: './'`). App icon done: teal Tabler kanban glyph on dark, shipped in the dmg and as the web favicon. Still open: install and open the dmg on this machine, full check once the file API lands.
