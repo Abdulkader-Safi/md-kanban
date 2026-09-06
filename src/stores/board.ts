@@ -217,13 +217,23 @@ export async function initBoard() {
       await persistMeta()
     } else {
       projects.value = meta.map((m) => ({ id: m.id, name: m.name, kind: m.kind }))
-      await rescanAll()
+      // Show the last known tasks instantly while the live scan runs.
+      // On reload the browser drops folder permission, so the live scan may
+      // fail. The snapshot keeps the board full until one rescan click.
+      tasks.value = [...(await loadDemoTasks()), ...(await loadFsSnapshot())]
     }
     // Restore the previously selected project when it still exists.
     if (prefs.projectId !== 'all' && projects.value.some((p) => p.id === prefs.projectId)) {
       selectedProjectId.value = prefs.projectId
       selectedWorkspace.value = prefs.workspace
     }
+    // Show the last known tasks instantly, then go live quietly.
+    // On reload the browser drops folder permission, so the live scan may
+    // fail. The snapshot keeps the board full until one rescan click.
+    if (meta.length === 0) {
+      tasks.value = [...(await loadDemoTasks()), ...(await loadFsSnapshot())]
+    }
+    await rescanAll({ quiet: true })
     startPoller()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load board'
@@ -247,6 +257,40 @@ async function persistDemoTasks() {
   const demo = tasks.value.filter((t) => projects.value.find((p) => p.name === t.project)?.kind === 'demo')
   const arr = demo.map((t) => ({ raw: stringifyTaskFile(t), project: t.project, workspace: t.workspace, relPath: t.relPath, fileName: t.fileName }))
   await set(DEMO_TASKS_KEY, JSON.stringify(arr))
+}
+
+const FS_TASKS_KEY = 'md-kanban/fs-tasks/v1'
+
+interface StoredTask {
+  raw: string
+  project: string
+  workspace: string
+  relPath: string
+  fileName: string
+}
+
+/** Snapshot of the last successful folder reads. Restores the board after
+ *  a reload while folder permission is still missing. */
+async function persistFsSnapshot() {
+  try {
+    const fsTasks = tasks.value.filter((t) => projects.value.some((p) => p.kind === 'fs' && p.name === t.project))
+    const arr: StoredTask[] = fsTasks.map((t) => ({ raw: stringifyTaskFile(t), project: t.project, workspace: t.workspace, relPath: t.relPath, fileName: t.fileName }))
+    await set(FS_TASKS_KEY, JSON.stringify(arr))
+  } catch { /* ignore */ }
+}
+
+async function loadFsSnapshot(): Promise<Task[]> {
+  try {
+    const saved = await get<string>(FS_TASKS_KEY)
+    if (!saved) return []
+    const arr = JSON.parse(saved) as StoredTask[]
+    const known = new Set(projects.value.filter((p) => p.kind === 'fs').map((p) => p.name))
+    return arr
+      .filter((s) => known.has(s.project))
+      .map((s) => parseTaskFile(s.raw, s))
+  } catch {
+    return []
+  }
 }
 
 export async function connectFolder() {
@@ -296,11 +340,12 @@ export async function rescanProject(projectId: string, opts: RescanOptions = {})
   try {
     const files = await scanProject(handle)
     const existing = tasks.value.filter((t) => t.project === proj.name)
-    if (quiet && files.length === 0 && existing.length > 0) return // failed scan, keep old tasks
+    if (files.length === 0 && existing.length > 0) return // failed scan, keep old tasks
     const parsed = files.map((f) =>
       parseTaskFile(f.content, { project: proj.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName }),
     )
     tasks.value = [...tasks.value.filter((t) => t.project !== proj.name), ...parsed]
+    await persistFsSnapshot()
   } finally {
     if (!quiet) loading.value = false
   }
@@ -314,22 +359,36 @@ export async function rescanAll(opts: RescanOptions = {}) {
   }
   try {
     const lists: Task[] = []
+    const failed: string[] = []
     const demo = await loadDemoTasks()
     lists.push(...demo.filter((t) => projects.value.some((p) => p.kind === 'demo' && p.name === t.project)))
     for (const p of projects.value.filter((x) => x.kind === 'fs')) {
       const handle = await checkAccess(p.id, askPerm)
-      if (!handle) continue
+      if (!handle) {
+        lists.push(...tasks.value.filter((t) => t.project === p.name)) // keep old tasks
+        failed.push(p.name)
+        continue
+      }
       try {
         const files = await scanProject(handle)
         const existing = tasks.value.filter((t) => t.project === p.name)
-        if (quiet && files.length === 0 && existing.length > 0) {
+        if (files.length === 0 && existing.length > 0) {
           lists.push(...existing) // failed scan, keep old tasks
+          failed.push(p.name)
           continue
         }
         files.forEach((f) => lists.push(parseTaskFile(f.content, { project: p.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName })))
-      } catch { /* keep going */ }
+      } catch {
+        lists.push(...tasks.value.filter((t) => t.project === p.name)) // keep old tasks
+        failed.push(p.name)
+      }
     }
     tasks.value = lists
+    if (failed.length === 0) {
+      await persistFsSnapshot()
+    } else if (!quiet) {
+      error.value = `Showing saved tasks for ${failed.join(', ')}. Click rescan to reconnect the folders.`
+    }
   } finally {
     if (!quiet) loading.value = false
   }
