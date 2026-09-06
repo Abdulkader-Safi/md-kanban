@@ -20,13 +20,19 @@ function uid(): string {
 }
 
 const projects = ref<ProjectRoot[]>([])
+export { projects }
 const tasks = ref<Task[]>([])
+export { tasks }
 const loading = ref(false)
+export { loading }
 const error = ref<string | null>(null)
+export { error }
 const fsSupported = supportsFS()
 
 const selectedProjectId = ref<string | 'all'>('all')
+export { selectedProjectId }
 const selectedWorkspace = ref<string | 'all'>('all')
+export { selectedWorkspace }
 
 const filters = reactive<BoardFilters>({
   query: '',
@@ -35,6 +41,7 @@ const filters = reactive<BoardFilters>({
   label: '',
   due: 'all',
 })
+export { filters }
 
 const handles: Record<string, any> = {}
 
