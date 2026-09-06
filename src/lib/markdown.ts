@@ -24,16 +24,8 @@ export function makeId(title: string, d = new Date()): string {
   return `${slugify(title)}-${dateStamp(d)}`
 }
 
-export function makeFileName(title: string, d = new Date(), pattern = 'name-date'): string {
-  const name = slugify(title)
-  const stamp = dateStamp(d)
-  const stampTime = d.toISOString().slice(0, 16).replace(/[:T]/g, '-')
-  switch (pattern) {
-    case 'date-name': return `${stamp}-${name}.md`
-    case 'name-datetime': return `${name}-${stampTime}.md`
-    case 'datetime-name': return `${stampTime}-${name}.md`
-    default: return `${name}-${stamp}.md`
-  }
+export function makeFileName(title: string, d = new Date()): string {
+  return `${slugify(title)}-${dateStamp(d)}.md`
 }
 
 /** Split raw markdown into frontmatter block + body. */
@@ -240,7 +232,7 @@ export function stringifyTaskFile(task: Task): string {
   return front + body
 }
 
-export function buildNewTask(input: NewTaskInput, meta: { project: string; workspace: string }): { task: Task; fileName: string } {
+export function buildNewTask(input: NewTaskInput, meta: { project: string; workspace: string }): Task {
   const now = new Date()
   const iso = now.toISOString()
   const id = makeId(input.title, now)
@@ -263,22 +255,5 @@ export function buildNewTask(input: NewTaskInput, meta: { project: string; works
     relPath: meta.workspace ? `${meta.workspace}/${fileName}` : fileName,
     fileName,
   }
-  return { task, fileName }
+  return task
 }
-
-export const TASK_FILE_DOC = `---
-id: "implement-dark-mode-toggle-2026-01-25"
-status: "todo"
-priority: "high"
-assignee: "sarah"
-dueDate: "2026-01-25"
-created: "2026-01-25T10:30:00.000Z"
-modified: "2026-01-25T14:20:00.000Z"
-labels: ["feature", "ui"]
-order: 0
----
-
-# Implement dark mode toggle
-
-Describe the work here. Any AI agent can read and update this file.
-`

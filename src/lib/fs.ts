@@ -4,7 +4,7 @@
  * Handles persist in IndexedDB so projects survive reloads.
  */
 
-import { del, get, set } from 'idb-keyval'
+import { get, set } from 'idb-keyval'
 
 export interface ScannedFile {
   relPath: string
@@ -160,8 +160,4 @@ export async function removeHandle(projectId: string): Promise<void> {
   const all = await loadHandles()
   delete all[projectId]
   await set(HANDLE_KEY, all)
-}
-
-export async function clearHandles(): Promise<void> {
-  await del(HANDLE_KEY)
 }

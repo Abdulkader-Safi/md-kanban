@@ -41,7 +41,6 @@ export interface ProjectRoot {
   name: string
   /** "fs" = real folder via File System Access API, "demo" = built-in sample */
   kind: 'fs' | 'demo'
-  rootPath?: string
 }
 
 export interface BoardFilters {
@@ -50,11 +49,4 @@ export interface BoardFilters {
   assignee: string
   label: string
   due: 'all' | 'overdue' | 'today' | 'week' | 'none'
-}
-
-export const PRIORITY_ORDER: Record<Priority, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
 }
