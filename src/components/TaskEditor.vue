@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { marked } from 'marked'
 import { Bot, Trash2, X } from 'lucide-vue-next'
 import UiButton from '@/components/ui/UiButton.vue'
@@ -24,9 +24,10 @@ const form = reactive({
 })
 
 watch(
-  task,
-  (t) => {
-    if (!t) return
+  () => task.value?.id ?? null,
+  (id) => {
+    const t = task.value
+    if (!t || !id) return
     form.title = t.title
     form.status = t.status
     form.priority = t.priority
@@ -37,6 +38,17 @@ watch(
   },
   { immediate: true },
 )
+
+/* Close only when press AND release both land on the backdrop, so
+ * drag-selecting text out of the panel does not close the editor. */
+const pressedOnBackdrop = ref(false)
+function onBackdropDown(e: MouseEvent) {
+  pressedOnBackdrop.value = e.target === e.currentTarget
+}
+function onBackdropUp(e: MouseEvent) {
+  if (e.target === e.currentTarget && pressedOnBackdrop.value) emit('close')
+  pressedOnBackdrop.value = false
+}
 
 const previewHtml = computed(() => marked.parse(form.body || '') as string)
 
@@ -78,7 +90,7 @@ function rawPreview(): string {
 </script>
 
 <template>
-  <div v-if="task" class="fixed inset-0 z-40 flex justify-end bg-black/30" @click.self="emit('close')">
+  <div v-if="task" class="fixed inset-0 z-40 flex justify-end bg-black/30" @mousedown="onBackdropDown" @click="onBackdropUp">
     <div class="flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-xl">
       <header class="flex items-center gap-2 border-b p-3">
         <div class="min-w-0">

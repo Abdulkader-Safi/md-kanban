@@ -1,6 +1,6 @@
 # MD Kanban
 
-Local markdown kanban board in the browser. Same idea as [kanban-markdown-vscode-extension](https://github.com/LachyFS/kanban-markdown-vscode-extension): every card is a markdown file with YAML frontmatter. Rebuilt here as a Vue 3 + Vite + shadcn-vue web app that runs fully local after `npm run build`.
+A project kanban that lets you track what your AI agents are doing. Each project is a folder, each task is a markdown file, and your agents read and write those files directly. You watch the board and always know what is done and what is not. Built as a Vue 3 + Vite + shadcn-vue web app that runs fully local after `npm run build`.
 
 ## How it works
 
@@ -11,7 +11,7 @@ Local markdown kanban board in the browser. Same idea as [kanban-markdown-vscode
 
 ## File format
 
-Compatible with the VS Code extension. Files live anywhere inside the project folder:
+Every card is a markdown file with YAML frontmatter. Files live anywhere inside the project folder:
 
 ```markdown
 ---

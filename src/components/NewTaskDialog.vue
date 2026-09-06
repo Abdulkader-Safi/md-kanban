@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import type { Priority, StatusId } from '@/lib/types'
 import { createTask, useBoard } from '@/stores/board'
@@ -8,6 +8,14 @@ const props = defineProps<{ open: boolean; status: StatusId; workspaceHint: stri
 const emit = defineEmits<{ close: [] }>()
 
 const { selectedWorkspace } = useBoard()
+const pressedOnBackdrop = ref(false)
+function onBackdropDown(e: MouseEvent) {
+  pressedOnBackdrop.value = e.target === e.currentTarget
+}
+function onBackdropUp(e: MouseEvent) {
+  if (e.target === e.currentTarget && pressedOnBackdrop.value) emit('close')
+  pressedOnBackdrop.value = false
+}
 const form = reactive({
   title: '',
   body: '',
@@ -54,7 +62,7 @@ async function submit() {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="emit('close')">
+  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @mousedown="onBackdropDown" @click="onBackdropUp">
     <form @submit.prevent="submit" class="w-full max-w-lg rounded-xl border bg-background p-4 shadow-xl">
       <h3 class="text-base font-bold">New card</h3>
       <p class="mb-3 font-mono text-[11px] text-muted-foreground">Creates a markdown file with YAML frontmatter.</p>
