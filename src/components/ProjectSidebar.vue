@@ -11,7 +11,16 @@ import {
   workspaces,
 } from '@/stores/board'
 
-const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck, isElectron } = useBoard()
+const { projects, tasks, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck, isElectron } = useBoard()
+
+const openCount = computed(() => {
+  const map: Record<string, number> = {}
+  for (const t of tasks.value) {
+    if (t.status === 'done') continue
+    map[t.project] = (map[t.project] ?? 0) + 1
+  }
+  return map
+})
 
 const lastCheckLabel = computed(() =>
   lastCheck.value ? lastCheck.value.toLocaleTimeString() : 'never',
@@ -45,7 +54,7 @@ function selectProject(id: string | 'all') {
         :class="['flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm', selectedProjectId === p.id ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50']"
       >
         <span class="truncate">{{ p.name }}</span>
-        <span class="ml-auto rounded bg-secondary px-1 text-[10px] text-secondary-foreground">{{ p.kind }}</span>
+        <span class="ml-auto rounded bg-secondary px-1 text-[10px] text-secondary-foreground" :title="p.kind">{{ openCount[p.name] ?? 0 }}</span>
       </button>
       <div v-if="selectedProjectId === p.id" class="mt-1 flex gap-1 px-2">
         <button v-if="p.kind === 'fs'" @click="rescanProject(p.id, { askPerm: true })" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" title="Rescan folder">
