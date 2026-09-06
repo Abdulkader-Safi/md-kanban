@@ -11,7 +11,7 @@ import {
   workspaces,
 } from '@/stores/board'
 
-const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck } = useBoard()
+const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck, isElectron } = useBoard()
 
 const lastCheckLabel = computed(() =>
   lastCheck.value ? lastCheck.value.toLocaleTimeString() : 'never',
@@ -28,7 +28,7 @@ function selectProject(id: string | 'all') {
     <UiButton @click="connectFolder()" size="sm" class="w-full">
       <IconFolderOpen class="h-4 w-4" /> Connect folder
     </UiButton>
-    <p v-if="!fsSupported" class="rounded-md bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-700 dark:text-amber-300">
+    <p v-if="!fsSupported && !isElectron" class="rounded-md bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-700 dark:text-amber-300">
       This browser cannot open folders directly. Use Chrome or Edge for folder access. Demo projects work everywhere.
     </p>
 

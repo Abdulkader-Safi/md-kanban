@@ -4,6 +4,7 @@ import type { BoardFilters, Priority, ProjectRoot, StatusId, Task } from '@/lib/
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { buildNewTask, parseTaskFile, stringifyTaskFile, type NewTaskInput } from '@/lib/markdown'
 import { deleteProjectFile, hasReadAccess, loadHandles, pickDirectory, removeHandle, requestReadAccess, saveHandle, scanProject, supportsFS, writeProjectFile } from '@/lib/fs'
+import { getElectronApi, type MdkanbanApi } from '@/lib/electron-api'
 import { demoTasks } from '@/lib/demo'
 
 const META_KEY = 'md-kanban/projects-meta/v1'
@@ -65,6 +66,15 @@ export { autoRefresh }
 const lastCheck = ref<Date | null>(null)
 export { lastCheck }
 
+/** Desktop file backend. Null in the browser, where the File System Access
+ *  API and demo backends apply instead. */
+function electron(): MdkanbanApi | null {
+  return getElectronApi()
+}
+
+const isElectron = electron() != null
+export { isElectron }
+
 const handles: Record<string, any> = {}
 
 export function useBoard() {
@@ -79,6 +89,7 @@ export function useBoard() {
     selectedWorkspace,
     autoRefresh,
     lastCheck,
+    isElectron,
     columns: DEFAULT_COLUMNS,
   }
 }
@@ -211,7 +222,13 @@ export async function initBoard() {
     const meta = await loadMeta()
     const stored = await loadHandles()
     Object.assign(handles, stored)
-    if (meta.length === 0) {
+    const api = electron()
+    if (api) {
+      // Desktop: projects live in the main process, no permissions needed.
+      const list = await api.listProjects().catch(() => [])
+      projects.value = list.map((p) => ({ id: p.id, name: p.name, kind: 'fs' as const }))
+      tasks.value = [...(await loadDemoTasks()), ...(await loadFsSnapshot())]
+    } else if (meta.length === 0) {
       // First run: load demo projects so the board is not empty
       projects.value = [
         { id: 'demo-website', name: 'website-redesign', kind: 'demo' },
@@ -298,6 +315,17 @@ async function loadFsSnapshot(): Promise<Task[]> {
 }
 
 export async function connectFolder() {
+  const api = electron()
+  if (api) {
+    const rec = await api.pickDirectory()
+    if (!rec) return
+    if (!projects.value.some((p) => p.id === rec.id)) {
+      projects.value.push({ id: rec.id, name: rec.name, kind: 'fs' })
+    }
+    await rescanProject(rec.id)
+    selectedProjectId.value = rec.id
+    return
+  }
   const handle = await pickDirectory()
   if (!handle) return
   const id = uid()
@@ -324,10 +352,44 @@ async function checkAccess(projectId: string, askPerm: boolean): Promise<any | n
   return ok ? handle : null
 }
 
+interface ScannedInput {
+  relPath: string
+  fileName: string
+  workspace: string
+  content: string
+}
+
+function applyScanned(projName: string, files: ScannedInput[]) {
+  const parsed = files.map((f) =>
+    parseTaskFile(f.content, { project: projName, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName }),
+  )
+  tasks.value = [...tasks.value.filter((t) => t.project !== projName), ...parsed]
+}
+
 export async function rescanProject(projectId: string, opts: RescanOptions = {}) {
   const { quiet = false, askPerm = false } = opts
   const proj = projects.value.find((p) => p.id === projectId)
   if (!proj || proj.kind !== 'fs') return
+  const api = electron()
+  if (api) {
+    if (!quiet) {
+      loading.value = true
+      error.value = null
+    }
+    try {
+      const files = await api.scanProject(projectId)
+      const existing = tasks.value.filter((t) => t.project === proj.name)
+      if (files.length === 0 && existing.length > 0) return // failed scan, keep old tasks
+      applyScanned(proj.name, files)
+      await persistFsSnapshot()
+      lastCheck.value = new Date()
+    } catch (e) {
+      if (!quiet) error.value = e instanceof Error ? e.message : `Could not read "${proj.name}".`
+    } finally {
+      if (!quiet) loading.value = false
+    }
+    return
+  }
   const handle = await checkAccess(projectId, askPerm)
   if (!handle) {
     if (!quiet) {
@@ -368,6 +430,23 @@ export async function rescanAll(opts: RescanOptions = {}) {
     const demo = await loadDemoTasks()
     lists.push(...demo.filter((t) => projects.value.some((p) => p.kind === 'demo' && p.name === t.project)))
     for (const p of projects.value.filter((x) => x.kind === 'fs')) {
+      const api = electron()
+      if (api) {
+        try {
+          const files = await api.scanProject(p.id)
+          const existing = tasks.value.filter((t) => t.project === p.name)
+          if (files.length === 0 && existing.length > 0) {
+            lists.push(...existing) // failed scan, keep old tasks
+            failed.push(p.name)
+            continue
+          }
+          files.forEach((f) => lists.push(parseTaskFile(f.content, { project: p.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName })))
+        } catch {
+          lists.push(...tasks.value.filter((t) => t.project === p.name)) // keep old tasks
+          failed.push(p.name)
+        }
+        continue
+      }
       const handle = await checkAccess(p.id, askPerm)
       if (!handle) {
         lists.push(...tasks.value.filter((t) => t.project === p.name)) // keep old tasks
@@ -404,7 +483,14 @@ export async function rescanAll(opts: RescanOptions = {}) {
 export async function disconnectProject(projectId: string) {
   const proj = projects.value.find((p) => p.id === projectId)
   if (!proj) return
-  if (proj.kind === 'fs') await removeHandle(projectId)
+  const api = electron()
+  if (api && proj.kind === 'fs') {
+    try {
+      await api.removeProject(projectId)
+    } catch { /* keep going */ }
+  } else if (proj.kind === 'fs') {
+    await removeHandle(projectId)
+  }
   delete handles[projectId]
   projects.value = projects.value.filter((p) => p.id !== projectId)
   tasks.value = tasks.value.filter((t) => t.project !== proj.name)
@@ -422,7 +508,9 @@ export async function createTask(input: NewTaskInput, workspace = '') {
   const ws = workspace || (selectedWorkspace.value === 'all' ? '' : selectedWorkspace.value)
   const { task } = buildNewTask(input, { project: proj.name, workspace: ws })
   if (proj.kind === 'fs') {
-    await writeProjectFile(handles[proj.id], task.relPath, stringifyTaskFile(task))
+    const api = electron()
+    if (api) await api.writeFile(proj.id, task.relPath, stringifyTaskFile(task))
+    else await writeProjectFile(handles[proj.id], task.relPath, stringifyTaskFile(task))
   } else {
     tasks.value.push(task)
     await persistDemoTasks()
@@ -445,7 +533,9 @@ export async function updateTask(id: string, patch: Partial<Task> & { title?: st
   const proj = projects.value.find((p) => p.name === next.project)
   if (!proj) return
   if (proj.kind === 'fs') {
-    await writeProjectFile(handles[proj.id], next.relPath, stringifyTaskFile(next))
+    const api = electron()
+    if (api) await api.writeFile(proj.id, next.relPath, stringifyTaskFile(next))
+    else await writeProjectFile(handles[proj.id], next.relPath, stringifyTaskFile(next))
   } else {
     await persistDemoTasks()
   }
@@ -466,7 +556,9 @@ export async function deleteTask(id: string) {
   const proj = projects.value.find((p) => p.name === t.project)
   if (!proj) return
   if (proj.kind === 'fs') {
-    await deleteProjectFile(handles[proj.id], t.relPath)
+    const api = electron()
+    if (api) await api.deleteFile(proj.id, t.relPath)
+    else await deleteProjectFile(handles[proj.id], t.relPath)
   } else {
     await persistDemoTasks()
   }
