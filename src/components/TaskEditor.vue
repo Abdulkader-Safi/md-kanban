@@ -67,6 +67,15 @@ function setTab(t: EditorTab) {
   }
 }
 
+function openPreviewTab() {
+  if (!task.value) return
+  const win = window.open('', '_blank')
+  if (!win) return
+  const title = form.title.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c] ?? c)
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{max-width:720px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6;color:#e5e5e5;background:#111}h1,h2{line-height:1.25}a{color:#7ab8ff}pre{overflow:auto;padding:1rem;background:#1e1e1e}code{font-family:monospace}table{border-collapse:collapse}td,th{border:1px solid #444;padding:.4rem .8rem}</style></head><body>${previewHtml.value}</body></html>`)
+  win.document.close()
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 function autosave() {
   if (!task.value) return
@@ -153,6 +162,12 @@ function rawPreview(): string {
           :class="activeTab === 'preview' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
           @click="setTab('preview')"
         >Preview</button>
+        <button
+          v-if="activeTab === 'preview'"
+          type="button"
+          class="ml-auto px-2 py-1.5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          @click="openPreviewTab"
+        >Open in new tab</button>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
