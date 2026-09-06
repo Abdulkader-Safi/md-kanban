@@ -37,15 +37,17 @@ Describe the work here. Checkboxes, notes, links all welcome.
 
 ## Desktop app
 
-There is also an Electron app you can install locally instead of using the browser:
+Prefer a native window over the browser? Run the Electron shell:
 
 ```bash
-bun run dist
+bun install
+bun run electron:dev  # dev shell (Vite + Electron)
+bun run dist           # production .dmg in release/
 ```
 
-This builds `release/MD Kanban-0.0.0-arm64.dmg`. Open it, drag to Applications, and launch. Tested on macOS. Not tested on Linux or Windows yet.
+`bun run dist` builds `release/MD Kanban-0.0.0-arm64.dmg`. Open it, drag to Applications, and launch. Tested on macOS. Not tested on Linux or Windows yet.
 
-The app is unsigned, so macOS shows a warning on first launch. Right click the app, choose Open, then confirm. `bun run electron:dev` runs the desktop shell in development.
+The app is unsigned, so macOS shows a warning on first launch. Right-click the app, choose Open, then confirm.
 
 ## Run it in the browser
 
