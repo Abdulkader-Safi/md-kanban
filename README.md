@@ -62,6 +62,6 @@ Serve `dist/` locally, e.g. `npx serve dist`, then open the URL and connect your
 
 - `N` new card, `Esc` close dialogs, drag cards between columns.
 
-## Later
+## License
 
-Online hosting and sync come after the local version proves itself. The file format stays the same, so today's markdown folders migrate as-is.
+MIT. See [LICENSE](LICENSE).
