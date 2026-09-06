@@ -47,6 +47,25 @@ async function ensurePerm(handle: DirHandle, mode: 'read' | 'readwrite' = 'readw
   }
 }
 
+/** True when we can read without prompting (used by background refresh). */
+export async function hasReadAccess(handle: DirHandle): Promise<boolean> {
+  try {
+    return (await handle.queryPermission({ mode: 'read' })) === 'granted'
+  } catch {
+    return true
+  }
+}
+
+/** Ask the user for access (call from a click handler). */
+export async function requestReadAccess(handle: DirHandle): Promise<boolean> {
+  try {
+    if ((await handle.queryPermission({ mode: 'readwrite' })) === 'granted') return true
+    return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted'
+  } catch {
+    return true
+  }
+}
+
 export async function pickDirectory(): Promise<DirHandle | null> {
   if (!supportsFS()) return null
   try {

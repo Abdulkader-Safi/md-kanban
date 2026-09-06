@@ -10,7 +10,7 @@ import {
   workspaces,
 } from '@/stores/board'
 
-const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported } = useBoard()
+const { projects, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh } = useBoard()
 
 function selectProject(id: string | 'all') {
   selectedProjectId.value = id
@@ -43,7 +43,7 @@ function selectProject(id: string | 'all') {
         <span class="ml-auto rounded bg-secondary px-1 text-[10px] text-secondary-foreground">{{ p.kind }}</span>
       </button>
       <div v-if="selectedProjectId === p.id" class="mt-1 flex gap-1 px-2">
-        <button v-if="p.kind === 'fs'" @click="rescanProject(p.id)" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" title="Rescan folder">
+        <button v-if="p.kind === 'fs'" @click="rescanProject(p.id, { askPerm: true })" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" title="Rescan folder">
           <IconRefresh class="h-3 w-3" /> rescan
         </button>
         <button @click="disconnectProject(p.id)" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive" title="Remove project">
@@ -71,9 +71,13 @@ function selectProject(id: string | 'all') {
     </div>
 
     <div class="mt-auto flex flex-col gap-2 border-t pt-2">
-      <UiButton variant="outline" size="sm" @click="rescanAll()" :disabled="loading">
+      <UiButton variant="outline" size="sm" @click="rescanAll({ askPerm: true })" :disabled="loading">
         <IconRefresh class="h-3.5 w-3.5" /> Rescan all
       </UiButton>
+      <label class="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
+        <input type="checkbox" v-model="autoRefresh" class="h-3.5 w-3.5 accent-[rgb(var(--sidebar-accent))]" />
+        Auto-refresh folders
+      </label>
       <p class="text-[11px] leading-4 text-muted-foreground">
         Each folder is a project. Subfolders group work. Every card is a markdown file with YAML frontmatter.
       </p>

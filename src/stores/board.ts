@@ -1,13 +1,15 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { get, set } from 'idb-keyval'
 import type { BoardFilters, Priority, ProjectRoot, StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { buildNewTask, parseTaskFile, stringifyTaskFile, type NewTaskInput } from '@/lib/markdown'
-import { deleteProjectFile, loadHandles, pickDirectory, removeHandle, saveHandle, scanProject, supportsFS, writeProjectFile } from '@/lib/fs'
+import { deleteProjectFile, hasReadAccess, loadHandles, pickDirectory, removeHandle, requestReadAccess, saveHandle, scanProject, supportsFS, writeProjectFile } from '@/lib/fs'
 import { demoTasks } from '@/lib/demo'
 
 const META_KEY = 'md-kanban/projects-meta/v1'
 const DEMO_TASKS_KEY = 'md-kanban/demo-tasks/v1'
+const PREFS_KEY = 'md-kanban/prefs/v1'
+const POLL_MS = 5000
 
 interface ProjectMeta {
   id: string
@@ -43,6 +45,24 @@ const filters = reactive<BoardFilters>({
 })
 export { filters }
 
+/** UI prefs that survive restarts: selection + auto-refresh. */
+interface Prefs {
+  projectId: string | 'all'
+  workspace: string | 'all'
+  autoRefresh: boolean
+}
+
+function loadPrefs(): Prefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY)
+    if (raw) return { projectId: 'all', workspace: 'all', autoRefresh: true, ...JSON.parse(raw) }
+  } catch { /* ignore */ }
+  return { projectId: 'all', workspace: 'all', autoRefresh: true }
+}
+
+const autoRefresh = ref(true)
+export { autoRefresh }
+
 const handles: Record<string, any> = {}
 
 export function useBoard() {
@@ -55,6 +75,7 @@ export function useBoard() {
     filters,
     selectedProjectId,
     selectedWorkspace,
+    autoRefresh,
     columns: DEFAULT_COLUMNS,
   }
 }
@@ -139,10 +160,50 @@ export const counts = computed(() => {
   return map
 })
 
+function savePrefs() {
+  try {
+    const prefs: Prefs = {
+      projectId: selectedProjectId.value,
+      workspace: selectedWorkspace.value,
+      autoRefresh: autoRefresh.value,
+    }
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
+  } catch { /* ignore */ }
+}
+
+watch([selectedProjectId, selectedWorkspace, autoRefresh], savePrefs)
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let polling = false
+
+/** Background refresh: re-read folders every few seconds so agent edits
+ *  appear with no clicks. Never touches the selected project. */
+async function pollOnce() {
+  if (polling || document.hidden || !autoRefresh.value) return
+  polling = true
+  try {
+    for (const p of projects.value.filter((x) => x.kind === 'fs')) {
+      if (!handles[p.id]) continue
+      try {
+        await rescanProject(p.id, { quiet: true })
+      } catch { /* keep old tasks on failure */ }
+    }
+  } finally {
+    polling = false
+  }
+}
+
+function startPoller() {
+  if (pollTimer != null) return
+  pollTimer = setInterval(() => void pollOnce(), POLL_MS)
+}
+
 export async function initBoard() {
   loading.value = true
   error.value = null
   try {
+    const prefs = loadPrefs()
+    autoRefresh.value = prefs.autoRefresh
     const meta = await loadMeta()
     const stored = await loadHandles()
     Object.assign(handles, stored)
@@ -158,6 +219,12 @@ export async function initBoard() {
       projects.value = meta.map((m) => ({ id: m.id, name: m.name, kind: m.kind }))
       await rescanAll()
     }
+    // Restore the previously selected project when it still exists.
+    if (prefs.projectId !== 'all' && projects.value.some((p) => p.id === prefs.projectId)) {
+      selectedProjectId.value = prefs.projectId
+      selectedWorkspace.value = prefs.workspace
+    }
+    startPoller()
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load board'
   } finally {
@@ -195,39 +262,78 @@ export async function connectFolder() {
   selectedProjectId.value = id
 }
 
-export async function rescanProject(projectId: string) {
+export interface RescanOptions {
+  /** Skip the loading spinner (background refresh). */
+  quiet?: boolean
+  /** Ask the browser for folder permission when needed (use from click handlers). */
+  askPerm?: boolean
+}
+
+async function checkAccess(projectId: string, askPerm: boolean): Promise<any | null> {
+  const handle = handles[projectId]
+  if (!handle) return null
+  const ok = askPerm ? await requestReadAccess(handle) : await hasReadAccess(handle)
+  return ok ? handle : null
+}
+
+export async function rescanProject(projectId: string, opts: RescanOptions = {}) {
+  const { quiet = false, askPerm = false } = opts
   const proj = projects.value.find((p) => p.id === projectId)
   if (!proj || proj.kind !== 'fs') return
-  const handle = handles[projectId]
+  const handle = await checkAccess(projectId, askPerm)
   if (!handle) {
-    error.value = `Folder handle for "${proj.name}" is missing. Reconnect the folder.`
+    if (!quiet) {
+      error.value = handles[projectId]
+        ? `Browser lost access to "${proj.name}". Click rescan to grant it again.`
+        : `Folder handle for "${proj.name}" is missing. Reconnect the folder.`
+    }
     return
   }
-  loading.value = true
+  if (!quiet) {
+    loading.value = true
+    error.value = null
+  }
   try {
     const files = await scanProject(handle)
+    const existing = tasks.value.filter((t) => t.project === proj.name)
+    if (quiet && files.length === 0 && existing.length > 0) return // failed scan, keep old tasks
     const parsed = files.map((f) =>
       parseTaskFile(f.content, { project: proj.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName }),
     )
     tasks.value = [...tasks.value.filter((t) => t.project !== proj.name), ...parsed]
   } finally {
-    loading.value = false
+    if (!quiet) loading.value = false
   }
 }
 
-export async function rescanAll() {
-  const lists: Task[] = []
-  const demo = await loadDemoTasks()
-  lists.push(...demo.filter((t) => projects.value.some((p) => p.kind === 'demo' && p.name === t.project)))
-  for (const p of projects.value.filter((x) => x.kind === 'fs')) {
-    const handle = handles[p.id]
-    if (!handle) continue
-    try {
-      const files = await scanProject(handle)
-      files.forEach((f) => lists.push(parseTaskFile(f.content, { project: p.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName })))
-    } catch { /* keep going */ }
+export async function rescanAll(opts: RescanOptions = {}) {
+  const { quiet = false, askPerm = false } = opts
+  if (!quiet) {
+    loading.value = true
+    error.value = null
   }
-  tasks.value = lists
+  try {
+    const lists: Task[] = []
+    const demo = await loadDemoTasks()
+    lists.push(...demo.filter((t) => projects.value.some((p) => p.kind === 'demo' && p.name === t.project)))
+    for (const p of projects.value.filter((x) => x.kind === 'fs')) {
+      const handle = await checkAccess(p.id, askPerm)
+      if (!handle) continue
+      try {
+        const files = await scanProject(handle)
+        const existing = tasks.value.filter((t) => t.project === p.name)
+        if (quiet && files.length === 0 && existing.length > 0) {
+          lists.push(...existing) // failed scan, keep old tasks
+          continue
+        }
+        files.forEach((f) => lists.push(parseTaskFile(f.content, { project: p.name, workspace: f.workspace, relPath: f.relPath, fileName: f.fileName })))
+      } catch { /* keep going */ }
+    }
+    tasks.value = lists
+  } finally {
+    if (!quiet) loading.value = false
+  }
+  // Note: rescan never changes the selected project or work folder.
 }
 
 export async function disconnectProject(projectId: string) {
