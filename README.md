@@ -1,6 +1,6 @@
 # MD Kanban
 
-A project kanban that lets you track what your AI agents are doing. Each project is a folder, each task is a markdown file, and your agents read and write those files directly. You watch the board and always know what is done and what is not. Built as a Vue 3 + Vite + shadcn-vue web app that runs fully local after `npm run build`.
+A project kanban that lets you track what your AI agents are doing. Each project is a folder, each task is a markdown file, and your agents read and write those files directly. You watch the board and always know what is done and what is not. Built as a Vue 3 + Vite + shadcn-vue web app that runs fully local after `bun run build`.
 
 ![MD Kanban board](Screenshot.png)
 
@@ -40,23 +40,23 @@ Describe the work here. Checkboxes, notes, links all welcome.
 There is also an Electron app you can install locally instead of using the browser:
 
 ```bash
-npm run dist
+bun run dist
 ```
 
 This builds `release/MD Kanban-0.0.0-arm64.dmg`. Open it, drag to Applications, and launch. Tested on macOS. Not tested on Linux or Windows yet.
 
-The app is unsigned, so macOS shows a warning on first launch. Right click the app, choose Open, then confirm. `npm run electron:dev` runs the desktop shell in development.
+The app is unsigned, so macOS shows a warning on first launch. Right click the app, choose Open, then confirm. `bun run electron:dev` runs the desktop shell in development.
 
 ## Run it in the browser
 
 ```bash
-npm install
-npm run dev      # local dev
-npm run build    # static output in dist/, open it with any static server
-npm run preview  # preview the production build
+bun install
+bun run dev      # local dev
+bun run build    # static output in dist/, open it with any static server
+bun run preview  # preview the production build
 ```
 
-Serve `dist/` locally, e.g. `npx serve dist`, then open the URL and connect your project folders. Folder handles persist in IndexedDB, so projects survive reloads. Browsers without the File System Access API (Firefox, Safari) get built-in demo projects; use Chrome or Edge for real folders.
+Serve `dist/` locally, e.g. `bunx serve dist`, then open the URL and connect your project folders. Folder handles persist in IndexedDB, so projects survive reloads. Browsers without the File System Access API (Firefox, Safari) get built-in demo projects; use Chrome or Edge for real folders.
 
 ## Keyboard
 

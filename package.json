@@ -10,8 +10,8 @@
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "electron:dev": "ELECTRON_RENDERER_URL=http://localhost:5173 concurrently -k \"vite\" \"electron .\"",
-    "electron:build": "npm run build && vite build -c electron/vite.main.config.ts",
-    "dist": "npm run electron:build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
+    "electron:build": "bun run build && vite build -c electron/vite.main.config.ts",
+    "dist": "bun run electron:build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
   },
   "build": {
     "appId": "com.safi.mdkanban",
