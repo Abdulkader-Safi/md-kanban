@@ -35,7 +35,19 @@ Describe the work here. Checkboxes, notes, links all welcome.
 
 `status` is one of `backlog`, `todo`, `in-progress`, `review`, `done`. `priority` is `critical`, `high`, `medium`, `low`.
 
-## Run it
+## Desktop app
+
+There is also an Electron app you can install locally instead of using the browser:
+
+```bash
+npm run dist
+```
+
+This builds `release/MD Kanban-0.0.0-arm64.dmg`. Open it, drag to Applications, and launch. Tested on macOS. Not tested on Linux or Windows yet.
+
+The app is unsigned, so macOS shows a warning on first launch. Right click the app, choose Open, then confirm. `npm run electron:dev` runs the desktop shell in development.
+
+## Run it in the browser
 
 ```bash
 npm install
