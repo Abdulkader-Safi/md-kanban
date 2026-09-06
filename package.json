@@ -11,9 +11,7 @@
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "gray-matter": "^4.0.3",
     "idb-keyval": "^6.3.0",
-    "js-yaml": "^5.4.1",
     "lucide-vue-next": "^1.0.0",
     "marked": "^18.0.11",
     "reka-ui": "^2.10.4",
