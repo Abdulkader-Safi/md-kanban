@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { marked } from 'marked'
-import { Bot, Trash2, X } from 'lucide-vue-next'
+import { IconRobot, IconTrash, IconX } from '@tabler/icons-vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import type { Priority, StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
@@ -97,7 +97,7 @@ function rawPreview(): string {
           <div class="truncate font-mono text-[11px] text-muted-foreground">{{ task.project }}/{{ task.relPath }}</div>
           <input v-model="form.title" @input="autosave" class="w-full bg-transparent text-lg font-bold outline-none" />
         </div>
-        <UiButton variant="ghost" size="icon" @click="emit('close')" class="ml-auto"><X class="h-4 w-4" /></UiButton>
+        <UiButton variant="ghost" size="icon" @click="emit('close')" class="ml-auto"><IconX class="h-4 w-4" /></UiButton>
       </header>
 
       <div class="grid grid-cols-2 gap-2 border-b p-3 text-xs sm:grid-cols-4">
@@ -131,9 +131,9 @@ function rawPreview(): string {
       </div>
 
       <footer class="flex items-center gap-2 border-t p-3">
-        <UiButton variant="outline" size="sm" @click="copyAIPrompt"><Bot class="h-4 w-4" /> Copy AI prompt</UiButton>
+        <UiButton variant="outline" size="sm" @click="copyAIPrompt"><IconRobot class="h-4 w-4" /> Copy AI prompt</UiButton>
         <span class="text-[11px] text-muted-foreground">Autosaves to the markdown file.</span>
-        <UiButton variant="destructive" size="sm" @click="onDelete" class="ml-auto"><Trash2 class="h-4 w-4" /> Delete</UiButton>
+        <UiButton variant="destructive" size="sm" @click="onDelete" class="ml-auto"><IconTrash class="h-4 w-4" /> Delete</UiButton>
       </footer>
       <details class="border-t p-3">
         <summary class="cursor-pointer text-xs text-muted-foreground">Raw markdown file</summary>

@@ -31,7 +31,7 @@ function onDrop(e: DragEvent) {
     @dragover.prevent="over = true"
     @dragleave="over = false"
     @drop="onDrop"
-    :class="['flex w-72 shrink-0 flex-col rounded-xl border bg-muted/40', over && 'column-dragover']"
+    :class="['flex w-72 shrink-0 flex-col rounded-lg border bg-muted/40', over && 'column-dragover']"
   >
     <header class="flex items-center gap-2 px-3 pt-3 pb-2">
       <span class="h-2.5 w-2.5 rounded-full" :style="{ background: column.color }" />

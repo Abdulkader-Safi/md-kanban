@@ -63,7 +63,7 @@ async function submit() {
 
 <template>
   <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @mousedown="onBackdropDown" @click="onBackdropUp">
-    <form @submit.prevent="submit" class="w-full max-w-lg rounded-xl border bg-background p-4 shadow-xl">
+    <form @submit.prevent="submit" class="w-full max-w-lg rounded-lg border bg-background p-4 shadow-xl">
       <h3 class="text-base font-bold">New card</h3>
       <p class="mb-3 font-mono text-[11px] text-muted-foreground">Creates a markdown file with YAML frontmatter.</p>
       <input v-model="form.title" placeholder="Card title" class="mb-2 h-9 w-full rounded-md border bg-background px-3 text-sm" required />
