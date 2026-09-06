@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { KanbanSquare, Plus } from 'lucide-vue-next'
+import { FolderKanban, KanbanSquare, Plus } from 'lucide-vue-next'
 import UiButton from '@/components/ui/UiButton.vue'
 import ProjectSidebar from '@/components/ProjectSidebar.vue'
 import FilterBar from '@/components/FilterBar.vue'
@@ -13,6 +13,7 @@ import type { StatusId } from '@/lib/types'
 const { columns } = useBoard()
 const openTaskId = ref<string | null>(null)
 const showNew = ref(false)
+const showProjects = ref(false)
 const newStatus = ref<StatusId>('backlog')
 
 const activeProject = computed(() => projects.value.find((p) => p.id === selectedProjectId.value))
@@ -44,11 +45,15 @@ onMounted(() => {
       <span class="flex items-center gap-2 font-bold"><KanbanSquare class="h-5 w-5" /> MD Kanban</span>
       <span class="hidden text-xs text-muted-foreground sm:block">local markdown board · {{ tasks.length }} cards · {{ projects.length }} projects</span>
       <span v-if="activeProject" class="rounded-full bg-secondary px-2.5 py-0.5 font-mono text-xs">{{ activeProject.name }}</span>
-      <UiButton size="sm" @click="openNew('backlog')" class="ml-auto"><Plus class="h-4 w-4" /> New card <kbd class="ml-1 rounded bg-black/20 px-1 text-[10px]">N</kbd></UiButton>
+      <UiButton variant="outline" size="sm" @click="showProjects = true" class="md:hidden"><FolderKanban class="h-4 w-4" /></UiButton>
+      <UiButton size="sm" @click="openNew('backlog')" class="ml-auto md:ml-0"><Plus class="h-4 w-4" /> New card <kbd class="ml-1 rounded bg-black/20 px-1 text-[10px]">N</kbd></UiButton>
     </header>
 
     <div class="flex min-h-0 flex-1">
       <ProjectSidebar class="hidden md:flex" />
+      <div v-if="showProjects" class="fixed inset-0 z-40 flex bg-black/30 md:hidden" @click.self="showProjects = false">
+        <ProjectSidebar class="h-full" />
+      </div>
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-3">
         <FilterBar />
         <div v-if="loading" class="rounded-lg border p-6 text-sm text-muted-foreground">Loading folders...</div>
