@@ -58,6 +58,7 @@ const activeTab = ref<EditorTab>(
     ? 'preview'
     : 'edit',
 )
+const expanded = ref(false)
 function setTab(t: EditorTab) {
   activeTab.value = t
   try {
@@ -65,15 +66,6 @@ function setTab(t: EditorTab) {
   } catch {
     /* private mode: keep in-memory only */
   }
-}
-
-function openPreviewTab() {
-  if (!task.value) return
-  const win = window.open('', '_blank')
-  if (!win) return
-  const title = form.title.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c] ?? c)
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{max-width:720px;margin:2rem auto;padding:0 1rem;font-family:system-ui,sans-serif;line-height:1.6;color:#e5e5e5;background:#111}h1,h2{line-height:1.25}a{color:#7ab8ff}pre{overflow:auto;padding:1rem;background:#1e1e1e}code{font-family:monospace}table{border-collapse:collapse}td,th{border:1px solid #444;padding:.4rem .8rem}</style></head><body>${previewHtml.value}</body></html>`)
-  win.document.close()
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -115,7 +107,7 @@ function rawPreview(): string {
 
 <template>
   <div v-if="task" class="fixed inset-0 z-40 flex justify-end bg-black/30" @mousedown="onBackdropDown" @click="onBackdropUp">
-    <div class="flex h-full w-full max-w-2xl flex-col border-l bg-background shadow-xl">
+    <div class="flex h-full w-full flex-col border-l bg-background shadow-xl" :class="expanded ? 'max-w-4xl' : 'max-w-2xl'">
       <header class="flex items-center gap-2 border-b p-3">
         <div class="min-w-0">
           <div class="truncate font-mono text-[11px] text-muted-foreground">{{ task.project }}/{{ task.relPath }}</div>
@@ -163,11 +155,10 @@ function rawPreview(): string {
           @click="setTab('preview')"
         >Preview</button>
         <button
-          v-if="activeTab === 'preview'"
           type="button"
           class="ml-auto px-2 py-1.5 text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-          @click="openPreviewTab"
-        >Open in new tab</button>
+          @click="expanded = !expanded"
+        >{{ expanded ? 'Collapse' : 'Expand' }}</button>
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
