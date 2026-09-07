@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { BoardColumn, StatusId } from '@/lib/types'
-import { visibleTasks, counts, moveTask } from '@/stores/board'
+import { visibleTasks, counts, moveTask, tasks } from '@/stores/board'
 import TaskCard from '@/components/TaskCard.vue'
 
 const props = defineProps<{ column: BoardColumn }>()
-const emit = defineEmits<{ open: [id: string]; newTask: [status: StatusId] }>()
+const emit = defineEmits<{ open: [id: string]; newTask: [status: StatusId]; moved: [{ id: string; from: StatusId; fromOrder: number; to: StatusId; toName: string }] }>()
 
 const over = ref(false)
 const draggingId = ref<string | null>(null)
@@ -17,12 +17,18 @@ function onDragStart(e: DragEvent, id: string) {
   e.dataTransfer?.setData('text/task-id', id)
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
 }
-function onDrop(e: DragEvent) {
+async function onDrop(e: DragEvent) {
   e.preventDefault()
   over.value = false
   const id = e.dataTransfer?.getData('text/task-id') ?? draggingId.value
   draggingId.value = null
-  if (id) void moveTask(id, props.column.id)
+  if (!id) return
+  const t = tasks.value.find((x) => x.id === id)
+  if (!t || t.status === props.column.id) return
+  const from = t.status
+  const fromOrder = t.order
+  await moveTask(id, props.column.id)
+  emit('moved', { id, from, fromOrder, to: props.column.id, toName: props.column.name })
 }
 </script>
 

@@ -5,14 +5,16 @@ import UiButton from '@/components/ui/UiButton.vue'
 import ProjectSidebar from '@/components/ProjectSidebar.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import KanbanColumn from '@/components/KanbanColumn.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import TaskEditor from '@/components/TaskEditor.vue'
 import NewTaskDialog from '@/components/NewTaskDialog.vue'
-import { error, initBoard, loading, projects, selectedProjectId, tasks, useBoard, visibleTasks } from '@/stores/board'
+import { createTask, error, initBoard, loading, moveTask, projects, selectedProjectId, tasks, updateTask, useBoard, visibleTasks } from '@/stores/board'
 import type { StatusId } from '@/lib/types'
 
 const { columns } = useBoard()
 const openTaskId = ref<string | null>(null)
 const showNew = ref(false)
+const showPalette = ref(false)
 const showProjects = ref(false)
 const newStatus = ref<StatusId>('backlog')
 const isDark = ref(document.documentElement.classList.contains('dark'))
@@ -30,15 +32,61 @@ function openNew(status: string) {
   showNew.value = true
 }
 
+interface MoveToast { id: string; from: StatusId; fromOrder: number; to: StatusId; toName: string }
+const moveToast = ref<MoveToast | null>(null)
+let moveTimer: ReturnType<typeof setTimeout> | undefined
+function onMoved(m: MoveToast) {
+  moveToast.value = m
+  clearTimeout(moveTimer)
+  moveTimer = setTimeout(() => { moveToast.value = null }, 5000)
+}
+async function undoMove() {
+  const m = moveToast.value
+  if (!m) return
+  clearTimeout(moveTimer)
+  moveToast.value = null
+  await updateTask(m.id, { status: m.from, order: m.fromOrder })
+}
+
+async function onPaletteOpen(id: string) {
+  showPalette.value = false
+  openTaskId.value = id
+}
+async function onPaletteCreate(title: string) {
+  showPalette.value = false
+  const t = await createTask(
+    { title, body: `# ${title}\n`, status: 'backlog', priority: 'medium', assignee: '', dueDate: null, labels: [] },
+  )
+  openTaskId.value = t.id
+}
+async function onPaletteMove(status: StatusId) {
+  const id = openTaskId.value
+  if (!id) return
+  showPalette.value = false
+  const t = tasks.value.find((x) => x.id === id)
+  if (!t || t.status === status) return
+  await moveTask(id, status)
+  onMoved({ id, from: t.status, fromOrder: t.order, to: status, toName: columns.find((c) => c.id === status)?.name ?? status })
+}
+
 onMounted(() => {
   void initBoard()
   window.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault()
+      showPalette.value = !showPalette.value
+      return
+    }
     const tag = (e.target as HTMLElement)?.tagName
     if ((e.key === 'n' || e.key === 'N') && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
       e.preventDefault()
       openNew('backlog')
     }
     if (e.key === 'Escape') {
+      if (showPalette.value) {
+        showPalette.value = false
+        return
+      }
       openTaskId.value = null
       showNew.value = false
     }
@@ -53,7 +101,8 @@ onMounted(() => {
       <span class="hidden text-xs text-muted-foreground sm:block">local markdown board · {{ tasks.length }} cards · {{ projects.length }} projects</span>
       <span v-if="activeProject" class="rounded-full bg-secondary px-2.5 py-0.5 font-mono text-xs">{{ activeProject.name }}</span>
       <UiButton variant="outline" size="sm" @click="showProjects = true" class="md:hidden"><IconFolders class="h-4 w-4" /></UiButton>
-      <UiButton variant="ghost" size="icon" @click="toggleTheme" class="ml-auto md:ml-0" :title="isDark ? 'Light mode' : 'Dark mode'">
+      <UiButton variant="outline" size="sm" @click="showPalette = true" class="ml-auto">Search <kbd class="rounded bg-black/20 px-1 text-[10px]">⌘K</kbd></UiButton>
+      <UiButton variant="ghost" size="icon" @click="toggleTheme" :title="isDark ? 'Light mode' : 'Dark mode'">
         <IconSun v-if="isDark" class="h-4 w-4" /><IconMoon v-else class="h-4 w-4" />
       </UiButton>
       <UiButton size="sm" @click="openNew('backlog')"><IconPlus class="h-4 w-4" /> New card <kbd class="ml-1 rounded bg-black/20 px-1 text-[10px]">N</kbd></UiButton>
@@ -80,12 +129,26 @@ onMounted(() => {
             :column="c"
             @open="openTaskId = $event"
             @newTask="openNew"
+            @moved="onMoved"
           />
         </div>
       </main>
     </div>
 
+    <div v-if="moveToast" class="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-xl">
+      <span>Moved to {{ moveToast.toName }}</span>
+      <UiButton size="sm" variant="outline" @click="undoMove">Undo</UiButton>
+    </div>
+
     <TaskEditor :taskId="openTaskId" @close="openTaskId = null" />
     <NewTaskDialog :open="showNew" :status="newStatus" workspaceHint="" @close="showNew = false" />
+    <CommandPalette
+      :open="showPalette"
+      :openTaskId="openTaskId"
+      @close="showPalette = false"
+      @openTask="onPaletteOpen"
+      @createCard="onPaletteCreate"
+      @moveOpen="onPaletteMove"
+    />
   </div>
 </template>

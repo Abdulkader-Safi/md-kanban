@@ -107,7 +107,7 @@ function rawPreview(): string {
 
 <template>
   <div v-if="task" class="fixed inset-0 z-40 flex justify-end bg-black/30" @mousedown="onBackdropDown" @click="onBackdropUp">
-    <div class="flex h-full w-full flex-col border-l bg-background shadow-xl" :class="expanded ? 'max-w-4xl' : 'max-w-2xl'">
+    <div class="flex h-full w-full flex-col border-l bg-background shadow-xl" :class="expanded ? 'w-full sm:w-2/3 sm:max-w-none' : 'max-w-2xl'">
       <header class="flex items-center gap-2 border-b p-3">
         <div class="min-w-0">
           <div class="truncate font-mono text-[11px] text-muted-foreground">{{ task.project }}/{{ task.relPath }}</div>
