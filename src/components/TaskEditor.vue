@@ -6,7 +6,7 @@ import UiButton from '@/components/ui/UiButton.vue'
 import type { Priority, StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { deleteTask, tasks, updateTask } from '@/stores/board'
-import { stringifyTaskFile } from '@/lib/markdown'
+import { parseSubtasks, stringifyTaskFile, toggleSubtask } from '@/lib/markdown'
 
 const props = defineProps<{ taskId: string | null }>()
 const emit = defineEmits<{ close: [] }>()
@@ -51,6 +51,14 @@ function onBackdropUp(e: MouseEvent) {
 }
 
 const previewHtml = computed(() => marked.parse(form.body || '') as string)
+const previewSubtasks = computed(() => parseSubtasks(form.body || ''))
+const previewDone = computed(() => previewSubtasks.value.filter((s) => s.done).length)
+
+function togglePreviewSubtask(i: number) {
+  if (!task.value) return
+  form.body = toggleSubtask(form.body, i)
+  autosave()
+}
 
 type EditorTab = 'edit' | 'preview'
 const activeTab = ref<EditorTab>(
@@ -163,7 +171,16 @@ function rawPreview(): string {
 
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <textarea v-if="activeTab === 'edit'" v-model="form.body" @input="autosave" spellcheck="false" class="board-scroll min-h-[240px] flex-1 resize-none bg-background p-3 font-mono text-[13px] leading-6 outline-none" />
-        <div v-else class="board-scroll prose-md min-h-[240px] flex-1 overflow-y-auto p-4" v-html="previewHtml" />
+        <div v-else class="board-scroll min-h-[240px] flex-1 overflow-y-auto p-4">
+          <div v-if="previewSubtasks.length" class="mb-3 rounded-lg border p-2">
+            <p class="px-1 pb-1 text-xs font-medium text-muted-foreground">Subtasks {{ previewDone }}/{{ previewSubtasks.length }}</p>
+            <label v-for="(s, i) in previewSubtasks" :key="i" class="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
+              <input type="checkbox" :checked="s.done" @change="togglePreviewSubtask(i)" class="mt-0.5 accent-primary" />
+              <span :class="s.done && 'text-muted-foreground line-through'">{{ s.text || '(empty)' }}</span>
+            </label>
+          </div>
+          <div class="prose-md" v-html="previewHtml" />
+        </div>
       </div>
 
       <footer class="flex items-center gap-2 border-t p-3">

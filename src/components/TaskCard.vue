@@ -4,6 +4,7 @@ import UiBadge from '@/components/ui/UiBadge.vue'
 import type { StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { moveTaskAt, tasks, updateTask } from '@/stores/board'
+import { parseSubtasks } from '@/lib/markdown'
 import { dueTone, formatDue } from '@/lib/format'
 
 const props = defineProps<{ task: Task; dragging?: boolean }>()
@@ -22,6 +23,8 @@ const excerpt = computed(() => {
   const noTitle = props.task.body.replace(/^#\s+.+$/m, '').trim()
   return noTitle.slice(0, 140)
 })
+const subtasks = computed(() => parseSubtasks(props.task.body))
+const subtaskDone = computed(() => subtasks.value.filter((s) => s.done).length)
 
 const grabbed = ref(false)
 const origin = ref<{ status: StatusId; order: number } | null>(null)
@@ -145,6 +148,7 @@ async function moveTo(to: StatusId) {
         {{ dueLabel }} · {{ task.dueDate }}
       </span>
       <span v-if="task.workspace" class="rounded bg-muted px-1.5 py-0.5 font-mono">{{ task.workspace }}</span>
+      <span v-if="subtasks.length" :title="`${subtaskDone} of ${subtasks.length} subtasks done`" class="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 font-medium">☑ {{ subtaskDone }}/{{ subtasks.length }}</span>
     </div>
     <div v-if="task.labels.length" class="mt-2 flex flex-wrap items-center gap-1">
       <span v-for="l in shownLabels" :key="l" class="rounded-full border px-1.5 py-px text-[11px] text-muted-foreground">#{{ l }}</span>

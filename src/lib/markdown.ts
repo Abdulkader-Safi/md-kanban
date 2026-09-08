@@ -232,6 +232,38 @@ export function stringifyTaskFile(task: Task): string {
   return front + body
 }
 
+export interface Subtask {
+  done: boolean
+  text: string
+}
+
+const SUBTASK_RE = /^(\s*[-*]\s+\[)([ xX])(\]\s*.*)$/
+
+/** All `- [ ]` / `- [x]` checklist items in body order. */
+export function parseSubtasks(body: string): Subtask[] {
+  const out: Subtask[] = []
+  for (const line of body.split('\n')) {
+    const m = line.match(SUBTASK_RE)
+    if (!m) continue
+    out.push({ done: m[2] !== ' ', text: (m[3] ?? '').replace(/^\]\s*/, '').trim() })
+  }
+  return out
+}
+
+/** Flip the nth checklist item, return the new body. No match = unchanged. */
+export function toggleSubtask(body: string, index: number): string {
+  let seen = -1
+  return body
+    .split('\n')
+    .map((line) => {
+      if (!SUBTASK_RE.test(line)) return line
+      seen += 1
+      if (seen !== index) return line
+      return line.replace(SUBTASK_RE, (_m, pre: string, mark: string, post: string) => `${pre}${mark === ' ' ? 'x' : ' '}${post}`)
+    })
+    .join('\n')
+}
+
 export function buildNewTask(input: NewTaskInput, meta: { project: string; workspace: string }): Task {
   const now = new Date()
   const iso = now.toISOString()
