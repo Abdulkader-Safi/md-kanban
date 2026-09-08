@@ -9,14 +9,25 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import TaskEditor from '@/components/TaskEditor.vue'
 import NewTaskDialog from '@/components/NewTaskDialog.vue'
 import { createTask, error, initBoard, loading, moveTask, projects, selectedProjectId, tasks, updateTask, useBoard, visibleTasks } from '@/stores/board'
+import { formatDue } from '@/lib/format'
 import type { StatusId } from '@/lib/types'
 
 const { columns } = useBoard()
+const statusName = (s: StatusId) => columns.find((c) => c.id === s)?.name ?? s
 const openTaskId = ref<string | null>(null)
 const showNew = ref(false)
 const showPalette = ref(false)
 const showProjects = ref(false)
 const newStatus = ref<StatusId>('backlog')
+const view = ref<'board' | 'list'>(
+  typeof localStorage !== 'undefined' && localStorage.getItem('md-kanban/view') === 'list' ? 'list' : 'board',
+)
+function setView(v: 'board' | 'list') {
+  view.value = v
+  try {
+    localStorage.setItem('md-kanban/view', v)
+  } catch { /* private mode */ }
+}
 const isDark = ref(document.documentElement.classList.contains('dark'))
 
 function toggleTheme() {
@@ -114,13 +125,58 @@ onMounted(() => {
         <ProjectSidebar class="h-full" />
       </div>
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-3">
-        <FilterBar />
+        <div class="flex items-center gap-2">
+          <FilterBar class="min-w-0 flex-1" />
+          <div class="ml-auto flex shrink-0 items-center rounded-md border p-0.5 text-xs" role="tablist" aria-label="View">
+            <button
+              role="tab"
+              :aria-selected="view === 'board'"
+              @click="setView('board')"
+              :class="['rounded px-2.5 py-1 font-medium', view === 'board' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground']"
+            >Board</button>
+            <button
+              role="tab"
+              :aria-selected="view === 'list'"
+              @click="setView('list')"
+              :class="['rounded px-2.5 py-1 font-medium', view === 'list' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground']"
+            >List</button>
+          </div>
+        </div>
         <div v-if="loading" class="rounded-lg border p-6 text-sm text-muted-foreground">Loading folders...</div>
         <div v-else-if="error" class="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">{{ error }}</div>
         <div v-else-if="!visibleTasks.length" class="flex flex-1 flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-10 text-center">
           <p class="font-semibold">No cards match</p>
           <p class="max-w-sm text-sm text-muted-foreground">Connect a project folder, pick a different project or work folder, or create your first card. Cards are plain markdown files your AI agent can read and edit.</p>
           <UiButton size="sm" @click="openNew('backlog')">Create first card</UiButton>
+        </div>
+        <div v-else-if="view === 'list'" class="board-scroll min-h-0 flex-1 overflow-auto rounded-lg border">
+          <table class="w-full border-collapse text-sm">
+            <thead class="sticky top-0 bg-muted">
+              <tr class="text-left text-xs text-muted-foreground">
+                <th class="px-3 py-2 font-medium">Title</th>
+                <th class="px-3 py-2 font-medium">Status</th>
+                <th class="px-3 py-2 font-medium">Priority</th>
+                <th class="px-3 py-2 font-medium">Due</th>
+                <th class="px-3 py-2 font-medium">Assignee</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="t in visibleTasks"
+                :key="t.id"
+                tabindex="0"
+                @click="openTaskId = t.id"
+                @keydown.enter="openTaskId = t.id"
+                class="cursor-pointer border-t hover:bg-accent/50 focus-visible:outline-2 focus-visible:outline-primary"
+              >
+                <td class="max-w-md truncate px-3 py-1.5 font-medium" :title="t.title">{{ t.title }}</td>
+                <td class="whitespace-nowrap px-3 py-1.5 text-xs text-muted-foreground">{{ statusName(t.status) }}</td>
+                <td class="whitespace-nowrap px-3 py-1.5 text-xs">{{ t.priority }}</td>
+                <td class="whitespace-nowrap px-3 py-1.5 text-xs text-muted-foreground">{{ formatDue(t.dueDate) || '—' }}</td>
+                <td class="whitespace-nowrap px-3 py-1.5 text-xs text-muted-foreground">{{ t.assignee ? `@${t.assignee}` : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div v-else class="board-scroll flex flex-1 items-stretch gap-3 overflow-x-auto pb-2">
           <KanbanColumn
