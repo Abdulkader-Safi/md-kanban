@@ -547,12 +547,43 @@ export async function updateTask(id: string, patch: Partial<Task> & { title?: st
   }
 }
 
-export async function moveTask(id: string, status: StatusId) {
+export async function moveTaskAt(id: string, status: StatusId, toIndex?: number) {
   const t = tasks.value.find((x) => x.id === id)
-  if (!t || t.status === status) return
-  const columnTasks = tasks.value.filter((x) => x.project === t.project && x.status === status)
-  const maxOrder = columnTasks.reduce((m, x) => Math.max(m, x.order), 0)
-  await updateTask(id, { status, order: maxOrder + 1 })
+  if (!t) return
+  const col = tasks.value
+    .filter((x) => x.project === t.project && x.status === status && x.id !== id)
+    .sort((a, b) => a.order - b.order)
+  if (toIndex == null || toIndex >= col.length) {
+    if (t.status === status) {
+      const orig = tasks.value
+        .filter((x) => x.project === t.project && x.status === status)
+        .sort((a, b) => a.order - b.order)
+      if (orig.length && orig[orig.length - 1].id === id) return
+    }
+    const maxOrder = col.reduce((m, x) => Math.max(m, x.order), 0)
+    await updateTask(id, { status, order: col.length ? maxOrder + 1 : 0 })
+    return
+  }
+  const idx = Math.max(0, Math.min(toIndex, col.length))
+  let order: number
+  if (col.length === 0) order = 0
+  else if (idx <= 0) order = col[0].order - 1
+  else if (idx >= col.length) order = col[col.length - 1].order + 1
+  else order = (col[idx - 1].order + col[idx].order) / 2
+  // ponytail: float interpolation, full renumber if precision collapses
+  if (!Number.isFinite(order) || order === col[idx - 1]?.order || order === col[idx]?.order) {
+    col.forEach((x, i) => {
+      const j = tasks.value.findIndex((y) => y.id === x.id)
+      if (j >= 0) tasks.value[j] = { ...tasks.value[j], order: i * 10 }
+    })
+    order = idx * 10 - 5
+  }
+  if (t.status === status && t.order === order) return
+  await updateTask(id, { status, order })
+}
+
+export async function moveTask(id: string, status: StatusId) {
+  await moveTaskAt(id, status)
 }
 
 export async function deleteTask(id: string) {

@@ -135,7 +135,7 @@ onMounted(() => {
       </main>
     </div>
 
-    <div v-if="moveToast" class="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-xl">
+    <div v-if="moveToast" role="status" aria-live="polite" class="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-xl">
       <span>Moved to {{ moveToast.toName }}</span>
       <UiButton size="sm" variant="outline" @click="undoMove">Undo</UiButton>
     </div>

@@ -145,6 +145,12 @@
 .card-dragging {
   @apply shadow-xl opacity-90;
 }
+.kbd-grabbed {
+  @apply shadow-xl ring-2 ring-primary;
+}
+.drop-slot {
+  @apply min-h-20 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5;
+}
 .column-dragover {
   @apply ring-2 ring-primary/40 bg-accent/60;
 }
