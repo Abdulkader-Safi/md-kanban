@@ -111,7 +111,7 @@ async function moveTo(to: StatusId) {
     @dragend="emit('dragend')"
     @click="emit('open', task.id)"
     @keydown="onKey"
-    :class="['group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition hover:shadow-md hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary', dragging && 'card-dragging', grabbed && 'kbd-grabbed']"
+    :class="['group relative cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition hover:shadow-md hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary', dragging && 'card-dragging', grabbed && 'kbd-grabbed']"
   >
     <div class="flex items-start justify-between gap-2">
       <h4 class="text-sm font-semibold leading-5">{{ task.title }}</h4>
