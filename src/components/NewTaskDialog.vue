@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import type { Priority, StatusId } from '@/lib/types'
 import { createTask, useBoard } from '@/stores/board'
+import { cardTemplate, parseQuickAdd, type CardTemplateId } from '@/lib/quick-add'
 
 const props = defineProps<{ open: boolean; status: StatusId; workspaceHint: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -43,17 +44,38 @@ watch(
   },
 )
 
+const quick = computed(() => parseQuickAdd(form.title))
+const quickHint = computed(() => {
+  const q = quick.value
+  const bits: string[] = []
+  if (q.priority) bits.push(q.priority)
+  if (q.assignee) bits.push(`@${q.assignee}`)
+  if (q.dueDate) bits.push(`due ${q.dueDate}`)
+  q.labels.forEach((l) => bits.push(`#${l}`))
+  return bits.join(' · ')
+})
+
+function applyTemplate(id: CardTemplateId) {
+  const t = cardTemplate(id, quick.value.title || form.title.trim())
+  form.priority = t.priority
+  form.labels = t.labels.join(', ')
+  form.body = t.body
+}
+
 async function submit() {
-  if (!form.title.trim()) return
+  const q = parseQuickAdd(form.title)
+  const title = q.title || form.title.trim()
+  if (!title) return
+  const manualLabels = form.labels.split(',').map((s) => s.trim()).filter(Boolean)
   await createTask(
     {
-      title: form.title.trim(),
-      body: form.body || `# ${form.title.trim()}\n`,
+      title,
+      body: form.body || `# ${title}\n`,
       status: form.status,
-      priority: form.priority,
-      assignee: form.assignee.trim(),
-      dueDate: form.dueDate || null,
-      labels: form.labels.split(',').map((s) => s.trim()).filter(Boolean),
+      priority: q.priority ?? form.priority,
+      assignee: q.assignee ?? form.assignee.trim(),
+      dueDate: q.dueDate ?? form.dueDate ?? null,
+      labels: [...new Set([...manualLabels, ...q.labels])],
     },
     form.workspace.trim(),
   )
@@ -66,7 +88,14 @@ async function submit() {
     <form @submit.prevent="submit" class="w-full max-w-lg rounded-lg border bg-background p-4 shadow-xl">
       <h3 class="text-base font-bold">New card</h3>
       <p class="mb-3 font-mono text-[11px] text-muted-foreground">Creates a markdown file with YAML frontmatter.</p>
-      <input v-model="form.title" placeholder="Card title" class="mb-2 h-9 w-full rounded-md border bg-background px-3 text-sm" required />
+      <input v-model="form.title" placeholder="Card title — try: Fix login p1 #backend @safi due:friday" class="mb-1 h-9 w-full rounded-md border bg-background px-3 text-sm" required />
+      <p v-if="quickHint" class="mb-1 font-mono text-[11px] text-primary">Will set: {{ quickHint }}</p>
+      <div class="mb-2 flex gap-1.5 text-[11px]">
+        <span class="self-center text-muted-foreground">Template:</span>
+        <button type="button" @click="applyTemplate('bug')" class="rounded-full border px-2 py-0.5 hover:bg-accent">bug</button>
+        <button type="button" @click="applyTemplate('feature')" class="rounded-full border px-2 py-0.5 hover:bg-accent">feature</button>
+        <button type="button" @click="applyTemplate('chore')" class="rounded-full border px-2 py-0.5 hover:bg-accent">chore</button>
+      </div>
       <textarea v-model="form.body" placeholder="Description (markdown)..." rows="4" class="mb-2 w-full rounded-md border bg-background p-2 font-mono text-[13px]" />
       <div class="grid grid-cols-2 gap-2 text-xs">
         <label class="flex flex-col gap-1">Status
