@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { BoardColumn, StatusId } from '@/lib/types'
-import { moveTaskAt, tasks, visibleTasks } from '@/stores/board'
+import { moveTaskAt, tasks, visibleTasks, archiveAllDone } from '@/stores/board'
 import TaskCard from '@/components/TaskCard.vue'
 
 const props = defineProps<{ column: BoardColumn }>()
@@ -13,6 +13,12 @@ const dropIndex = ref<number>(0)
 const listEl = ref<HTMLElement | null>(null)
 
 const cards = computed(() => visibleTasks.value.filter((t) => t.status === props.column.id))
+
+async function onArchive() {
+  if (!cards.value.length) return
+  if (!confirm(`Archive ${cards.value.length} done cards to archive/?`)) return
+  await archiveAllDone()
+}
 
 function onDragStart(e: DragEvent, id: string) {
   draggingId.value = id
@@ -84,6 +90,7 @@ async function onDrop(e: DragEvent) {
       <span class="h-2.5 w-2.5 rounded-full" :style="{ background: column.color }" />
       <h3 class="text-sm font-semibold">{{ column.name }}</h3>
       <span class="ml-auto rounded-full bg-secondary px-2 text-xs font-medium">{{ cards.length }}</span>
+      <button v-if="column.id === 'done' && cards.length" @click="onArchive" class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground" title="Move all done cards to archive/">archive</button>
       <button @click="emit('newTask', column.id)" class="rounded px-1.5 text-lg leading-none text-muted-foreground hover:bg-accent hover:text-foreground" title="Add card">+</button>
     </header>
     <div ref="listEl" class="board-scroll flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-3 min-h-[120px]">

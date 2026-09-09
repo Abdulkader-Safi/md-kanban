@@ -105,11 +105,16 @@ async function loadMeta(): Promise<ProjectMeta[]> {
 
 function taskMatchesProject(t: Task): boolean {
   const pid = selectedProjectId.value
-  if (pid === 'all') return true
+  if (pid === 'all') {
+    if (t.workspace === 'archive' && selectedWorkspace.value === 'all') return false
+    if (selectedWorkspace.value !== 'all' && t.workspace !== selectedWorkspace.value) return false
+    return true
+  }
   const proj = projects.value.find((p) => p.id === pid)
   if (!proj) return true
   if (t.project !== proj.name) return false
-  if (selectedWorkspace.value !== 'all' && t.workspace !== selectedWorkspace.value) return false
+  if (selectedWorkspace.value === 'all') return t.workspace !== 'archive'
+  if (t.workspace !== selectedWorkspace.value) return false
   return true
 }
 
@@ -599,6 +604,40 @@ export async function deleteTask(id: string) {
   } else {
     await persistDemoTasks()
   }
+}
+
+/** Move every done card in the current project view to the `archive/` work
+ *  folder. Keeps the markdown format, only workspace/relPath change. */
+export async function archiveAllDone(): Promise<number> {
+  const done = tasks.value.filter((t) => t.status === 'done' && t.workspace !== 'archive' && taskMatchesProject(t))
+  if (!done.length) return 0
+  const taken = new Set(tasks.value.map((t) => `${t.project}/${t.relPath}`))
+  for (const t of done) {
+    const proj = projects.value.find((p) => p.name === t.project)
+    let rel = `archive/${t.fileName}`
+    for (let n = 2; taken.has(`${t.project}/${rel}`); n++) rel = `archive/${t.fileName.replace(/\.md$/, `-${n}.md`)}`
+    taken.add(`${t.project}/${rel}`)
+    const next: Task = { ...t, workspace: 'archive', relPath: rel, modified: new Date().toISOString() }
+    const idx = tasks.value.findIndex((x) => x.id === t.id)
+    if (idx >= 0) tasks.value[idx] = next
+    if (!proj) continue
+    if (proj.kind === 'fs') {
+      const content = stringifyTaskFile(next)
+      const api = getElectronApi()
+      try {
+        if (api) {
+          await api.writeFile(proj.id, rel, content)
+          await api.deleteFile(proj.id, t.relPath)
+        } else if (handles[proj.id]) {
+          await writeProjectFile(handles[proj.id], rel, content)
+          await deleteProjectFile(handles[proj.id], t.relPath)
+        }
+      } catch { /* keep optimistic update, rescan reconciles */ }
+    }
+  }
+  await persistDemoTasks()
+  await persistFsSnapshot()
+  return done.length
 }
 
 export function togglePriorityFilter(p: Priority) {
