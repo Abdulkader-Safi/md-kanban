@@ -1,7 +1,10 @@
 export function formatDue(due: string | null): string {
   if (!due) return ''
   const today = new Date().toISOString().slice(0, 10)
-  if (due < today) return 'Overdue'
+  if (due < today) {
+    const days = Math.max(1, Math.round((Date.now() - new Date(due).getTime()) / 864e5))
+    return `${days}d overdue`
+  }
   if (due === today) return 'Today'
   const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10)
   if (due === tomorrow) return 'Tomorrow'
