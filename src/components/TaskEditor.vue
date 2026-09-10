@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { marked } from 'marked'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import { IconRobot, IconTrash, IconX } from '@tabler/icons-vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import type { Priority, StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { deleteTask, tasks, updateTask } from '@/stores/board'
 import { parseSubtasks, stringifyTaskFile, toggleSubtask } from '@/lib/markdown'
+import type { RenderContext } from '@/lib/render'
+
+// Editor and renderer are large; they load the first time a card opens.
+const MarkdownEditor = defineAsyncComponent(() => import('@/components/MarkdownEditor.vue'))
+const MarkdownPreview = defineAsyncComponent(() => import('@/components/MarkdownPreview.vue'))
 
 const props = defineProps<{ taskId: string | null }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; open: [id: string] }>()
 
 const task = computed(() => tasks.value.find((t) => t.id === props.taskId) ?? null)
 
@@ -23,9 +27,39 @@ const form = reactive({
   body: '',
 })
 
+/* The save is bound to the card being edited when it was scheduled, and
+ * flushed before the form switches to another card or closes, so a quick
+ * close or card link never drops the last edit or writes it elsewhere. */
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+let pendingSave: (() => void) | null = null
+function autosave() {
+  if (!task.value) return
+  const id = task.value.id
+  clearTimeout(saveTimer)
+  pendingSave = () => {
+    pendingSave = null
+    void updateTask(id, {
+      title: form.title,
+      status: form.status,
+      priority: form.priority,
+      assignee: form.assignee,
+      dueDate: form.dueDate || null,
+      labels: form.labels.split(',').map((s) => s.trim()).filter(Boolean),
+      body: form.body,
+    } satisfies Partial<Task>)
+  }
+  saveTimer = setTimeout(() => pendingSave?.(), 500)
+}
+function flushSave() {
+  clearTimeout(saveTimer)
+  pendingSave?.()
+}
+
 watch(
   () => task.value?.id ?? null,
   (id) => {
+    // The form still holds the card being left; save it before it changes.
+    flushSave()
     const t = task.value
     if (!t || !id) return
     form.title = t.title
@@ -50,7 +84,13 @@ function onBackdropUp(e: MouseEvent) {
   pressedOnBackdrop.value = false
 }
 
-const previewHtml = computed(() => marked.parse(form.body || '') as string)
+// Wikilinks and relative links resolve against cards in the same project.
+const renderCtx = computed<RenderContext>(() => ({
+  pagePath: task.value?.relPath ?? '',
+  tasks: tasks.value
+    .filter((t) => t.project === task.value?.project)
+    .map((t) => ({ id: t.id, title: t.title, relPath: t.relPath })),
+}))
 const previewSubtasks = computed(() => parseSubtasks(form.body || ''))
 const previewDone = computed(() => previewSubtasks.value.filter((s) => s.done).length)
 
@@ -74,23 +114,6 @@ function setTab(t: EditorTab) {
   } catch {
     /* private mode: keep in-memory only */
   }
-}
-
-let saveTimer: ReturnType<typeof setTimeout> | undefined
-function autosave() {
-  if (!task.value) return
-  clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    void updateTask(task.value!.id, {
-      title: form.title,
-      status: form.status,
-      priority: form.priority,
-      assignee: form.assignee,
-      dueDate: form.dueDate || null,
-      labels: form.labels.split(',').map((s) => s.trim()).filter(Boolean),
-      body: form.body,
-    } satisfies Partial<Task>)
-  }, 500)
 }
 
 function copyAIPrompt() {
@@ -170,7 +193,7 @@ function rawPreview(): string {
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <textarea v-if="activeTab === 'edit'" v-model="form.body" @input="autosave" spellcheck="false" class="board-scroll min-h-[240px] flex-1 resize-none bg-background p-3 font-mono text-[13px] leading-6 outline-none" />
+        <MarkdownEditor v-if="activeTab === 'edit'" v-model="form.body" @update:model-value="autosave" />
         <div v-else class="board-scroll min-h-[240px] flex-1 overflow-y-auto p-4">
           <div v-if="previewSubtasks.length" class="mb-3 rounded-lg border p-2">
             <p class="px-1 pb-1 text-xs font-medium text-muted-foreground">Subtasks {{ previewDone }}/{{ previewSubtasks.length }}</p>
@@ -179,7 +202,7 @@ function rawPreview(): string {
               <span :class="s.done && 'text-muted-foreground line-through'">{{ s.text || '(empty)' }}</span>
             </label>
           </div>
-          <div class="prose-md" v-html="previewHtml" />
+          <MarkdownPreview :source="form.body" :ctx="renderCtx" :project="task.project" @open-task="emit('open', $event)" />
         </div>
       </div>
 

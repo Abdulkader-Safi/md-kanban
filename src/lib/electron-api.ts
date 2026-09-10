@@ -22,6 +22,8 @@ export interface MdkanbanApi {
   removeProject: (id: string) => Promise<void>
   scanProject: (id: string) => Promise<ElectronFile[]>
   readFile: (id: string, relPath: string) => Promise<string>
+  /** Image bytes for the preview. Only image extensions are served. */
+  readBinary: (id: string, relPath: string) => Promise<Uint8Array<ArrayBuffer>>
   writeFile: (id: string, relPath: string, content: string) => Promise<void>
   deleteFile: (id: string, relPath: string) => Promise<void>
   onProjectChanged: (cb: (id: string) => void) => () => void

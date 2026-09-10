@@ -154,27 +154,280 @@
 .column-dragover {
   @apply ring-2 ring-primary/40 bg-accent/60;
 }
+.cm-scroller::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.cm-scroller::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-border;
+}
+
+/* Editor colours (MarkdownEditor.vue). */
+:root {
+  --md-selection: oklch(0.511 0.096 186.391 / 22%);
+  --md-active-line: oklch(0.963 0.002 197.1 / 60%);
+  --md-link: oklch(0.511 0.096 186.391);
+  --md-code: oklch(0.5 0.15 30);
+  --md-syn-keyword: oklch(0.5 0.18 300);
+  --md-syn-string: oklch(0.5 0.13 150);
+  --md-syn-number: oklch(0.55 0.15 50);
+  --md-syn-name: oklch(0.5 0.14 250);
+  --md-syn-prop: oklch(0.5 0.1 200);
+  --md-code-surface: #0d1117;
+}
+.dark {
+  --md-selection: oklch(0.7 0.12 186 / 30%);
+  --md-active-line: oklch(1 0 0 / 4%);
+  --md-link: oklch(0.78 0.12 182);
+  --md-code: oklch(0.8 0.1 40);
+  --md-syn-keyword: oklch(0.78 0.13 300);
+  --md-syn-string: oklch(0.8 0.13 150);
+  --md-syn-number: oklch(0.8 0.12 60);
+  --md-syn-name: oklch(0.78 0.11 250);
+  --md-syn-prop: oklch(0.8 0.08 200);
+}
+
+/* Rendered card markdown (MarkdownPreview.vue, src/lib/render.ts). */
+.prose-md {
+  @apply text-sm leading-6 break-words;
+}
+.prose-md > * + * {
+  @apply mt-3;
+}
 .prose-md h1 {
-  @apply text-xl font-bold mt-1 mb-2;
+  @apply text-xl font-bold mt-1;
 }
 .prose-md h2 {
-  @apply text-lg font-semibold mt-3 mb-1;
+  @apply text-lg font-semibold mt-6;
 }
-.prose-md p {
-  @apply text-sm leading-6 my-1.5;
+.prose-md h3 {
+  @apply text-base font-semibold mt-5;
+}
+.prose-md :is(h4, h5, h6) {
+  @apply text-sm font-semibold mt-4;
+}
+.prose-md .heading-anchor {
+  @apply ml-2 text-muted-foreground no-underline opacity-0;
+}
+.prose-md :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor,
+.prose-md .heading-anchor:focus-visible {
+  @apply opacity-100;
 }
 .prose-md ul {
-  @apply list-disc pl-5 text-sm space-y-1;
+  @apply list-disc pl-5 space-y-1;
 }
 .prose-md ol {
-  @apply list-decimal pl-5 text-sm space-y-1;
+  @apply list-decimal pl-5 space-y-1;
 }
-.prose-md code {
-  @apply rounded-none bg-muted px-1 py-0.5 text-[13px];
+.prose-md li > :is(ul, ol) {
+  @apply mt-1;
 }
-.prose-md pre {
-  @apply rounded-none bg-muted p-3 overflow-x-auto text-[13px];
+.prose-md li:has(> input[type='checkbox']) {
+  @apply list-none -ml-5;
+}
+.prose-md li > input[type='checkbox'] {
+  @apply mr-1.5 align-middle accent-primary;
 }
 .prose-md a {
   @apply underline underline-offset-2;
+}
+.prose-md a.wikilink {
+  color: var(--md-link);
+}
+.prose-md .wikilink-unresolved {
+  @apply text-muted-foreground no-underline;
+  text-decoration-style: dotted;
+}
+.prose-md span.wikilink-unresolved {
+  @apply underline decoration-dotted;
+}
+.prose-md blockquote {
+  @apply border-l-[3px] border-border pl-4 text-muted-foreground;
+}
+.prose-md hr {
+  @apply my-6 border-border;
+}
+.prose-md img {
+  @apply max-w-full h-auto;
+}
+.prose-md .asset-missing {
+  @apply inline-block border border-dashed px-3 py-2 font-mono text-xs text-muted-foreground;
+}
+.prose-md mark {
+  @apply px-0.5 text-foreground;
+  background: oklch(0.85 0.16 90 / 45%);
+}
+.prose-md kbd {
+  @apply border border-b-2 bg-muted px-1.5 py-px font-mono text-[11px];
+}
+.prose-md :not(pre) > code {
+  @apply bg-muted px-1 py-0.5 font-mono text-[12.5px];
+}
+
+/* Tables: a scroll box that fills the column, with visible cell borders. */
+.prose-md .table-wrap {
+  @apply overflow-x-auto border;
+}
+.prose-md table {
+  @apply w-full border-collapse text-sm;
+}
+.prose-md th,
+.prose-md td {
+  @apply border px-3 py-1.5 text-left align-top;
+}
+.prose-md .table-wrap :is(th, td):first-child {
+  @apply border-l-0;
+}
+.prose-md .table-wrap :is(th, td):last-child {
+  @apply border-r-0;
+}
+.prose-md .table-wrap tr:first-child :is(th, td) {
+  @apply border-t-0;
+}
+.prose-md .table-wrap tr:last-child td {
+  @apply border-b-0;
+}
+.prose-md th {
+  @apply bg-muted font-semibold;
+}
+.prose-md tbody tr:nth-child(even) {
+  @apply bg-muted/40;
+}
+
+/* Code blocks: Shiki colours on a fixed dark surface, label and copy button. */
+.prose-md .code-block {
+  background: var(--md-code-surface);
+  color: #e6edf3;
+}
+.prose-md .code-head {
+  @apply flex items-center justify-between px-3 pt-2 pb-1 font-mono text-[11px] text-white/50;
+}
+.prose-md .code-copy {
+  @apply px-1.5 py-0.5 text-white/60 hover:bg-white/10 hover:text-white;
+}
+.prose-md pre {
+  @apply overflow-x-auto px-3 pb-3 font-mono text-[12.5px] leading-5;
+}
+.prose-md pre code {
+  @apply block w-max min-w-full;
+}
+.prose-md pre .line {
+  @apply -mx-3 inline-block px-3;
+  width: calc(100% + 1.5rem);
+}
+.prose-md pre .line.highlighted {
+  background: oklch(1 0 0 / 7%);
+  box-shadow: inset 2px 0 oklch(0.7 0.12 186);
+}
+.prose-md pre .line.diff.add {
+  background: oklch(0.8 0.16 151 / 12%);
+  box-shadow: inset 2px 0 oklch(0.8 0.16 151);
+}
+.prose-md pre .line.diff.remove {
+  background: oklch(0.7 0.19 22 / 14%);
+  box-shadow: inset 2px 0 oklch(0.7 0.19 22);
+  opacity: 0.75;
+}
+
+/* Callouts: GitHub and Obsidian, five looks. */
+.prose-md .callout {
+  @apply flex flex-col gap-1 border-l-[3px] bg-muted px-4 py-3;
+}
+.prose-md .callout-label {
+  @apply font-mono text-[11px] font-semibold tracking-[0.08em];
+}
+.prose-md .callout-title {
+  @apply font-sans text-sm tracking-normal;
+}
+.prose-md .callout-body > * + * {
+  @apply mt-2;
+}
+.prose-md .callout-note {
+  @apply border-primary;
+}
+.prose-md .callout-note .callout-label {
+  color: var(--md-link);
+}
+.prose-md .callout-tip {
+  border-color: oklch(0.65 0.15 150);
+}
+.prose-md .callout-tip .callout-label {
+  color: oklch(0.6 0.15 150);
+}
+.prose-md .callout-warning {
+  border-color: oklch(0.75 0.15 75);
+}
+.prose-md .callout-warning .callout-label {
+  color: oklch(0.65 0.15 65);
+}
+.prose-md .callout-danger {
+  @apply border-destructive;
+}
+.prose-md .callout-danger .callout-label {
+  @apply text-destructive;
+}
+.prose-md .callout-quote {
+  @apply border-border;
+}
+.prose-md .callout-quote .callout-label {
+  @apply text-muted-foreground;
+}
+.prose-md details.callout > summary {
+  @apply flex cursor-pointer list-none items-center gap-2;
+}
+.prose-md details.callout > summary::-webkit-details-marker {
+  display: none;
+}
+.prose-md details.callout > summary::before {
+  content: '+';
+  @apply w-3 font-mono;
+}
+.prose-md details.callout[open] > summary::before {
+  content: '-';
+}
+.prose-md details:not(.callout) {
+  @apply border px-3 py-2;
+}
+.prose-md details:not(.callout) > summary {
+  @apply cursor-pointer font-medium;
+}
+.prose-md details:not(.callout)[open] > summary {
+  @apply mb-2;
+}
+
+/* Math and diagrams. */
+.prose-md .katex-display {
+  @apply overflow-x-auto overflow-y-hidden py-1;
+}
+.prose-md .mermaid-diagram {
+  @apply border bg-card;
+}
+.prose-md .mermaid-diagram:not([data-state]) {
+  @apply whitespace-pre p-3 font-mono text-xs text-muted-foreground;
+}
+.prose-md .mermaid-scroll {
+  @apply overflow-x-auto p-4;
+}
+.prose-md .mermaid-scroll svg {
+  @apply mx-auto block h-auto;
+}
+.prose-md .mermaid-diagram[data-state='error'] {
+  @apply p-3;
+}
+.prose-md .mermaid-diagram pre {
+  @apply mt-2 bg-muted p-3 text-xs text-muted-foreground;
+}
+.prose-md .mermaid-error {
+  @apply font-mono text-xs text-destructive;
+}
+
+/* Footnotes (GFM). */
+.prose-md .footnotes {
+  @apply mt-8 border-t pt-3 text-xs text-muted-foreground;
+}
+.prose-md .footnotes h2 {
+  @apply sr-only;
+}
+.prose-md sup a {
+  @apply no-underline;
 }

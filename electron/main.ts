@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { promises as fsPromises, watch, type FSWatcher } from 'node:fs'
 import path from 'node:path'
@@ -7,6 +7,7 @@ import {
   deleteProjectFile,
   loadProjects,
   readProjectFile,
+  readProjectImage,
   removeProject,
   scanProject,
   writeProjectFile,
@@ -171,6 +172,12 @@ function registerFileApi(): void {
     return await readProjectFile(root, relPath)
   })
 
+  ipcMain.handle('mdkanban:read-binary', async (_e, id: string, relPath: string) => {
+    const root = await rootFor(userData, id)
+    if (!root) throw new Error('Unknown project')
+    return await readProjectImage(root, relPath)
+  })
+
   ipcMain.handle('mdkanban:write-file', async (_e, id: string, relPath: string, content: string) => {
     const root = await rootFor(userData, id)
     if (!root) throw new Error('Unknown project')
@@ -196,6 +203,16 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  })
+
+  // Links in a card preview open in the system browser. The app window
+  // itself never navigates away from the board.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^(https?|mailto):/i.test(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url !== win.webContents.getURL()) e.preventDefault()
   })
 
   const devUrl = process.env.ELECTRON_RENDERER_URL

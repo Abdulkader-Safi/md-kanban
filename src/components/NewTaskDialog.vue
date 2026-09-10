@@ -92,9 +92,9 @@ async function submit() {
       <p v-if="quickHint" class="mb-1 font-mono text-[11px] text-primary">Will set: {{ quickHint }}</p>
       <div class="mb-2 flex gap-1.5 text-[11px]">
         <span class="self-center text-muted-foreground">Template:</span>
-        <button type="button" @click="applyTemplate('bug')" class="rounded-full border px-2 py-0.5 hover:bg-accent">bug</button>
-        <button type="button" @click="applyTemplate('feature')" class="rounded-full border px-2 py-0.5 hover:bg-accent">feature</button>
-        <button type="button" @click="applyTemplate('chore')" class="rounded-full border px-2 py-0.5 hover:bg-accent">chore</button>
+        <button type="button" @click="applyTemplate('bug')" class="border px-2 py-0.5 hover:bg-accent">bug</button>
+        <button type="button" @click="applyTemplate('feature')" class="border px-2 py-0.5 hover:bg-accent">feature</button>
+        <button type="button" @click="applyTemplate('chore')" class="border px-2 py-0.5 hover:bg-accent">chore</button>
       </div>
       <textarea v-model="form.body" placeholder="Description (markdown)..." rows="4" class="mb-2 w-full rounded-md border bg-background p-2 font-mono text-[13px]" />
       <div class="grid grid-cols-2 gap-2 text-xs">

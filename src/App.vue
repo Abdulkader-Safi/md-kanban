@@ -88,8 +88,12 @@ onMounted(() => {
       showPalette.value = !showPalette.value
       return
     }
-    const tag = (e.target as HTMLElement)?.tagName
-    if ((e.key === 'n' || e.key === 'N') && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+    // A key the editor already handled (Escape closing its search panel)
+    // stops here. The editor is contenteditable, so it counts as typing.
+    if (e.defaultPrevented) return
+    const target = e.target as HTMLElement | null
+    const typing = !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+    if ((e.key === 'n' || e.key === 'N') && !typing) {
       e.preventDefault()
       openNew('backlog')
     }
@@ -110,7 +114,7 @@ onMounted(() => {
     <header class="flex items-center gap-3 border-b px-4 py-2.5">
       <span class="flex items-center gap-2 font-bold"><IconLayoutKanban class="h-5 w-5" /> MD Kanban</span>
       <span class="hidden text-xs text-muted-foreground sm:block">local markdown board · {{ tasks.length }} cards · {{ projects.length }} projects</span>
-      <span v-if="activeProject" class="rounded-full bg-secondary px-2.5 py-0.5 font-mono text-xs">{{ activeProject.name }}</span>
+      <span v-if="activeProject" class="bg-secondary px-2.5 py-0.5 font-mono text-xs">{{ activeProject.name }}</span>
       <UiButton variant="outline" size="sm" @click="showProjects = true" class="md:hidden"><IconFolders class="h-4 w-4" /></UiButton>
       <UiButton variant="outline" size="sm" @click="showPalette = true" class="ml-auto">Search <kbd class="rounded bg-black/20 px-1 text-[10px]">⌘K</kbd></UiButton>
       <UiButton variant="ghost" size="icon" @click="toggleTheme" :title="isDark ? 'Light mode' : 'Dark mode'">
@@ -196,7 +200,7 @@ onMounted(() => {
       <UiButton size="sm" variant="outline" @click="undoMove">Undo</UiButton>
     </div>
 
-    <TaskEditor :taskId="openTaskId" @close="openTaskId = null" />
+    <TaskEditor :taskId="openTaskId" @close="openTaskId = null" @open="openTaskId = $event" />
     <NewTaskDialog :open="showNew" :status="newStatus" workspaceHint="" @close="showNew = false" />
     <CommandPalette
       :open="showPalette"

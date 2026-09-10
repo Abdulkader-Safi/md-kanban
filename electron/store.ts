@@ -113,6 +113,16 @@ export async function readProjectFile(root: string, relPath: string): Promise<st
   return await fs.readFile(abs, 'utf-8')
 }
 
+const IMAGE = /\.(png|jpe?g|gif|webp|avif|svg|bmp|ico)$/i
+
+/** Image bytes for the preview. Anything that is not an image is refused, so
+ *  a card cannot pull other files out of the folder as binary. */
+export async function readProjectImage(root: string, relPath: string): Promise<Buffer> {
+  const abs = resolveInRoot(root, relPath)
+  if (!abs || !IMAGE.test(abs)) throw new Error('Not an image in this project')
+  return await fs.readFile(abs)
+}
+
 export async function writeProjectFile(root: string, relPath: string, content: string): Promise<void> {
   const abs = resolveInRoot(root, relPath)
   if (!abs) throw new Error('Path escapes project root')

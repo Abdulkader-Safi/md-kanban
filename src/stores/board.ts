@@ -3,7 +3,7 @@ import { get, set } from 'idb-keyval'
 import type { BoardFilters, Priority, ProjectRoot, StatusId, Task } from '@/lib/types'
 import { DEFAULT_COLUMNS } from '@/lib/types'
 import { buildNewTask, parseTaskFile, stringifyTaskFile, type NewTaskInput } from '@/lib/markdown'
-import { deleteProjectFile, hasReadAccess, loadHandles, pickDirectory, removeHandle, requestReadAccess, saveHandle, scanProject, supportsFS, writeProjectFile } from '@/lib/fs'
+import { deleteProjectFile, hasReadAccess, loadHandles, pickDirectory, readProjectBlob, removeHandle, requestReadAccess, saveHandle, scanProject, supportsFS, writeProjectFile } from '@/lib/fs'
 import { getElectronApi } from '@/lib/electron-api'
 import { demoTasks } from '@/lib/demo'
 
@@ -51,6 +51,8 @@ interface Prefs {
   projectId: string | 'all'
   workspace: string | 'all'
   autoRefresh: boolean
+  /** Vim keys in the card markdown editor only. */
+  vimKeys?: boolean
 }
 
 function loadPrefs(): Prefs {
@@ -63,6 +65,8 @@ function loadPrefs(): Prefs {
 
 const autoRefresh = ref(true)
 export { autoRefresh }
+const vimKeys = ref(loadPrefs().vimKeys ?? false)
+export { vimKeys }
 const lastCheck = ref<Date | null>(null)
 export { lastCheck }
 
@@ -84,6 +88,7 @@ export function useBoard() {
     selectedProjectId,
     selectedWorkspace,
     autoRefresh,
+    vimKeys,
     lastCheck,
     isElectron,
     columns: DEFAULT_COLUMNS,
@@ -181,12 +186,13 @@ function savePrefs() {
       projectId: selectedProjectId.value,
       workspace: selectedWorkspace.value,
       autoRefresh: autoRefresh.value,
+      vimKeys: vimKeys.value,
     }
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs))
   } catch { /* ignore */ }
 }
 
-watch([selectedProjectId, selectedWorkspace, autoRefresh], savePrefs)
+watch([selectedProjectId, selectedWorkspace, autoRefresh, vimKeys], savePrefs)
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let polling = false
@@ -549,6 +555,26 @@ export async function updateTask(id: string, patch: Partial<Task> & { title?: st
     else await writeProjectFile(handles[proj.id], next.relPath, stringifyTaskFile(next))
   } else {
     await persistDemoTasks()
+  }
+}
+
+const IMAGE_TYPES: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  avif: 'image/avif', svg: 'image/svg+xml', bmp: 'image/bmp', ico: 'image/x-icon',
+}
+
+/** An image inside a project folder, for the card preview. Null when the
+ *  project is the demo, the file is missing, or it is not an image. */
+export async function readProjectAsset(projectName: string, relPath: string): Promise<Blob | null> {
+  const proj = projects.value.find((p) => p.name === projectName)
+  const type = IMAGE_TYPES[relPath.split('.').pop()?.toLowerCase() ?? '']
+  if (!proj || proj.kind !== 'fs' || !type) return null
+  try {
+    const api = getElectronApi()
+    if (api) return new Blob([await api.readBinary(proj.id, relPath)], { type })
+    return handles[proj.id] ? await readProjectBlob(handles[proj.id], relPath) : null
+  } catch {
+    return null
   }
 }
 

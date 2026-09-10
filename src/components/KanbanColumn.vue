@@ -89,7 +89,7 @@ async function onDrop(e: DragEvent) {
     <header class="flex items-center gap-2 px-3 pt-3 pb-2">
       <span class="h-2.5 w-2.5 rounded-full" :style="{ background: column.color }" />
       <h3 class="text-sm font-semibold">{{ column.name }}</h3>
-      <span class="ml-auto rounded-full bg-secondary px-2 text-xs font-medium">{{ cards.length }}</span>
+      <span class="ml-auto bg-secondary px-2 text-xs font-medium">{{ cards.length }}</span>
       <button v-if="column.id === 'done' && cards.length" @click="onArchive" class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground" title="Move all done cards to archive/">archive</button>
       <button @click="emit('newTask', column.id)" class="rounded px-1.5 text-lg leading-none text-muted-foreground hover:bg-accent hover:text-foreground" title="Add card">+</button>
     </header>

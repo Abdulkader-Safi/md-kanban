@@ -65,7 +65,7 @@ function deleteView(name: string) {
         v-for="p in priorities"
         :key="p"
         @click="togglePriorityFilter(p)"
-        :class="['rounded-full border px-2.5 py-1 text-xs font-medium transition', filters.priorities.includes(p) ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground']"
+        :class="['h-8 border px-2.5 text-xs font-medium transition', filters.priorities.includes(p) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground']"
       >
         {{ p }}
       </button>
@@ -90,7 +90,7 @@ function deleteView(name: string) {
     <span
       v-for="v in views"
       :key="v"
-      class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+      class="inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
     >
       <button @click="applyView(v)" :title="`Apply view ${v}`">{{ v }}</button>
       <button @click="deleteView(v)" class="hover:text-destructive" :title="`Delete view ${v}`" aria-label="Delete view">×</button>

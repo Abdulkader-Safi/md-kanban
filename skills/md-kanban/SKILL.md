@@ -1,6 +1,7 @@
 # MD Kanban skill
 
 ---
+
 name: md-kanban
 description: Manage MD Kanban markdown task boards. Use whenever the user asks to track work, check project status, break work into tasks, add or move or finish a task, or mentions the kanban board, task folders, or what is done vs not done. Covers reading, creating, updating, moving, and deleting markdown task files.
 ---
@@ -56,6 +57,35 @@ Field rules:
 - `order`: number for sorting inside a column. New cards go last, so use the current highest plus 1.
 - `created`: set once. `modified`: refresh to the current UTC time on every edit.
 - The first `#` heading matches the task title.
+
+## Writing the body
+
+The card preview renders more than plain markdown. Use these where they help; the file stays readable as text either way.
+
+| Write                                                                     | Preview shows                                                                  | Rendered by                        |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------- |
+| `\| a \| b \|` tables, `- [ ]` checklists, `[^1]` footnotes, `~~strike~~` | GitHub-style tables with borders, checkboxes, footnotes                        | remark-gfm                         |
+| ` ```ts title="lib/auth.ts" {2,4-5} `                                     | Coloured code with a file name label and lines 2, 4 and 5 marked               | Shiki                              |
+| `old() // [!code --]` and `new() // [!code ++]` inside a fence            | Red and green diff lines, the comment removed                                  | Shiki transformers                 |
+| ` ```mermaid ` fence                                                      | A diagram that follows light and dark mode; a broken one shows its error       | Mermaid                            |
+| `$E = mc^2$` inline, `$$ ... $$` on its own lines                         | Typeset math. `$5 or $50` stays plain text                                     | KaTeX                              |
+| `> [!note]`, `> [!tip] Title`, `> [!faq]- Folded`                         | Coloured callout box; `-` starts folded, `+` starts open                       | MD Kanban (`src/lib/render.ts`)    |
+| `[[Card title]]`, `[[card-id\|label]]`, `[text](./other-card.md)`         | A link that opens that card. Matches title, file name or id, same project only | MD Kanban (`src/lib/render.ts`)    |
+| `![[diagram.png\|300]]`, `![alt](./img/shot.png)`                         | The image, read from the project folder                                        | MD Kanban (`src/lib/render.ts`)    |
+| `==key point==`                                                           | Highlighted text                                                               | MD Kanban (`src/lib/render.ts`)    |
+| `%% private note %%`                                                      | Nothing. Hidden in the preview and on the board card                           | MD Kanban (`src/lib/render.ts`)    |
+| `<details>`, `<kbd>`, `<sub>`, `<sup>`                                    | As in HTML                                                                     | rehype-sanitize (GitHub allowlist) |
+| `## Heading`                                                              | Anchor link; h2 and h3 fill an "On this page" list                             | rehype-slug                        |
+
+Rules for these:
+
+- Link related cards with `[[Card title]]` instead of pasting file paths.
+- Put blockers in `> [!warning]` and open questions in `> [!faq]-` so they stand out.
+- Supported callout types: note, info, todo, abstract, summary, tldr, important, tip, hint, success, check, done, warning, caution, attention, question, help, faq, danger, error, failure, fail, missing, bug, quote, cite, example. Unknown types show as a note.
+- Image paths are relative to the card file. `![[name.png]]` also tries the project root.
+- `%%` comments are hidden from people, not from the file. Never put secrets in them. Two `%%` anywhere, even inside backticks, hide the text between them.
+- Scripts, iframes, forms and `style` attributes are stripped, so do not rely on them.
+- `- [ ]` items anywhere in the body count toward the card's subtask badge.
 
 ## Adding a task
 

@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('mdkanban', {
   removeProject: (id: string) => ipcRenderer.invoke('mdkanban:remove-project', id),
   scanProject: (id: string) => ipcRenderer.invoke('mdkanban:scan-project', id),
   readFile: (id: string, relPath: string) => ipcRenderer.invoke('mdkanban:read-file', id, relPath),
+  readBinary: (id: string, relPath: string) => ipcRenderer.invoke('mdkanban:read-binary', id, relPath),
   writeFile: (id: string, relPath: string, content: string) =>
     ipcRenderer.invoke('mdkanban:write-file', id, relPath, content),
   deleteFile: (id: string, relPath: string) => ipcRenderer.invoke('mdkanban:delete-file', id, relPath),

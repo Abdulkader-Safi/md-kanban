@@ -11,7 +11,7 @@ import {
   workspaces,
 } from '@/stores/board'
 
-const { projects, tasks, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, lastCheck, isElectron } = useBoard()
+const { projects, tasks, selectedProjectId, selectedWorkspace, loading, fsSupported, autoRefresh, vimKeys, lastCheck, isElectron } = useBoard()
 
 const openCount = computed(() => {
   const map: Record<string, number> = {}
@@ -92,10 +92,11 @@ function selectProject(id: string | 'all') {
         <input type="checkbox" v-model="autoRefresh" class="h-3.5 w-3.5 accent-[rgb(var(--sidebar-accent))]" />
         Auto-refresh folders
       </label>
+      <label class="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground" title="Vim keys in the card markdown editor only">
+        <input type="checkbox" v-model="vimKeys" class="h-3.5 w-3.5 accent-[rgb(var(--sidebar-accent))]" />
+        Vim keys in editor
+      </label>
       <p class="font-mono text-[10px] text-muted-foreground/70">checked {{ lastCheckLabel }}</p>
-      <p class="text-[11px] leading-4 text-muted-foreground">
-        Each folder is a project. Subfolders group work. Every card is a markdown file with YAML frontmatter.
-      </p>
     </div>
   </aside>
 </template>

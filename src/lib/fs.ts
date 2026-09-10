@@ -132,6 +132,14 @@ export async function writeProjectFile(handle: DirHandle, relPath: string, conte
   await w.close()
 }
 
+/** One file as a Blob (images in the preview). Throws when missing. */
+export async function readProjectBlob(handle: DirHandle, relPath: string): Promise<Blob> {
+  const parts = relPath.split('/').filter(Boolean)
+  const fileName = parts.pop()!
+  const dir = await dirFor(handle, parts.join('/'), false)
+  return await (await dir.getFileHandle(fileName)).getFile()
+}
+
 export async function deleteProjectFile(handle: DirHandle, relPath: string): Promise<void> {
   const parts = relPath.split('/').filter(Boolean)
   const fileName = parts.pop()!
